@@ -84,6 +84,14 @@ export default async function BlogPage() {
 
   return (
     <>
+      {/* CSS hover effects -- Server Component cannot use onMouseEnter/onMouseLeave */}
+      <style>{`
+        .blog-card-hover:hover {
+          box-shadow: var(--shadow-md) !important;
+          transform: translateY(-2px) !important;
+        }
+      `}</style>
+
       <Nav/>
 
       {/* Hero band */}
@@ -148,7 +156,7 @@ export default async function BlogPage() {
             {/* Featured article (first) */}
             {featured && (
               <Link href={`/blog/${featured.slug}`} style={{ textDecoration: 'none', display: 'block', marginBottom: 40 }}>
-                <article style={{
+                <article className="blog-card-hover" style={{
                   background: '#fff',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--r-lg)',
@@ -158,14 +166,6 @@ export default async function BlogPage() {
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
                 }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-md)';
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)';
-                    (e.currentTarget as HTMLElement).style.transform = '';
-                  }}
                 >
                   {/* Cover */}
                   <div style={{ overflow: 'hidden', minHeight: 260 }}>
@@ -235,7 +235,7 @@ export default async function BlogPage() {
                 }}>
                   {rest.map((article, i) => (
                     <Link key={article.id} href={`/blog/${article.slug}`} style={{ textDecoration: 'none' }}>
-                      <article style={{
+                      <article className="blog-card-hover" style={{
                         background: '#fff',
                         border: '1px solid var(--border)',
                         borderRadius: 'var(--r-lg)',
@@ -246,14 +246,6 @@ export default async function BlogPage() {
                         display: 'flex',
                         flexDirection: 'column',
                       }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-md)';
-                          (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)';
-                          (e.currentTarget as HTMLElement).style.transform = '';
-                        }}
                       >
                         {/* Cover */}
                         <div style={{ overflow: 'hidden', aspectRatio: '16/9' }}>

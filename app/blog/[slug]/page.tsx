@@ -103,7 +103,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
   // Increment view count in background (admin client bypasses RLS)
   const admin = createAdminClient();
-  admin.rpc('increment_article_views', { article_slug: params.slug }).then(() => {});
+  void admin.rpc('increment_article_views', { article_slug: params.slug });
 
   // Fetch related articles (same tags, exclude current)
   const { data: related } = await supabase
@@ -159,6 +159,13 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
+      {/* CSS hover effects -- inline style on a Server Component cannot use event handlers */}
+      <style>{`
+        .related-card:hover {
+          border-color: var(--orange) !important;
+        }
+      `}</style>
 
       <Nav/>
 
@@ -286,7 +293,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(related as Article[]).map(rel => (
                   <Link key={rel.id} href={`/blog/${rel.slug}`} style={{ textDecoration: 'none' }}>
-                    <div style={{
+                    <div className="related-card" style={{
                       background: '#fff',
                       border: '1px solid var(--border)',
                       borderRadius: 'var(--r-md)',
@@ -296,8 +303,6 @@ export default async function ArticlePage({ params }: { params: { slug: string }
                       alignItems: 'flex-start',
                       transition: 'border-color .15s',
                     }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--orange)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}
                     >
                       {rel.cover_image_url && (
                         <img src={rel.cover_image_url} alt={rel.title}
