@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 
-// GET /api/listings/[id]
-// Pass ?notrack=1 to skip view count increment (used by /status/[id] page)
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = createServerClient();
@@ -14,11 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Increment view count fire-and-forget -- skip when notrack param present
-    // (status page, edit page, admin checks -- not a real buyer view)
     const notrack = new URL(req.url).searchParams.get('notrack');
     if (!notrack) {
-     void supabase.rpc('increment_views', { listing_id: params.id });
+      void supabase.rpc('increment_views', { listing_id: params.id });
     }
 
     return NextResponse.json(data);
@@ -27,15 +23,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-// PATCH /api/listings/[id] -- update mpesa_code on a PENDING listing only
-// Only allows fields that a seller legitimately sets post-submission.
-// Scoped to status='pending' so live listings cannot be tampered with.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const supabase = createServerClient();
 
-    // Only allow updating these fields, and only on pending listings
     const allowed = ['mpesa_code', 'description', 'images'] as const;
     const updates: Record<string, unknown> = {};
     for (const key of allowed) {
@@ -46,12 +38,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     }
 
-    // Guard: only touch listings that are still pending (not yet approved/rejected)
     const { data, error } = await supabase
       .from('listings')
       .update(updates)
       .eq('id', params.id)
-      .eq('status', 'pending')   // ← prevents tampering with live listings
+      .eq('status', 'pending')
       .select()
       .single();
 
