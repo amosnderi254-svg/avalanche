@@ -1,0 +1,29 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key",
+    "MPESA_CONSUMER_KEY": "@mpesa_consumer_key",
+    "MPESA_CONSUMER_SECRET": "@mpesa_consumer_secret",
+    "MPESA_SHORTCODE": "@mpesa_shortcode",
+    "MPESA_PASSKEY": "@mpesa_passkey",
+    "NEXT_PUBLIC_APP_URL": "@app_url",
+    "MPESA_ENV": "@mpesa_env",
+    "ADMIN_PIN": "@admin_pin",
+    "NEXT_PUBLIC_ADMIN_PIN": "@next_public_admin_pin",
+    "ADMIN_WHATSAPP": "@admin_whatsapp",
+    "ADMIN_NOTIFY_CHANNEL": "@admin_notify_channel",
+    "CRON_SECRET": "@cron_secret"
+  },
+  "crons": [
+    {
+      "path": "/api/cron/expire-listings",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

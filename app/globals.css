@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens (V2 parity) ────────────────────────── */
+:root {
+  --orange:   #F07828;
+  --green:    #7DC243;
+  --text-1:   #111111;
+  --text-2:   #444444;
+  --text-3:   #888888;
+  --bg:       #ffffff;
+  --surface:  #f9f9f7;
+  --border:   #ebebeb;
+  --r-sm:     8px;
+  --r-md:     14px;
+  --r-lg:     20px;
+  --r-pill:   40px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --dur:       200ms;
+  --ease:      cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; display: block; }
+a   { color: inherit; text-decoration: none; }
+button { font-family: 'Outfit', sans-serif; cursor: pointer; }
+input, textarea, select { font-family: 'Outfit', sans-serif; }
+
+/* ── Utility classes ──────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--r-pill);
+  font: 600 14px 'Outfit', sans-serif;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary   { background: var(--orange); color: #fff; }
+.btn-secondary { background: var(--surface); color: var(--text-1); border: 1.5px solid var(--border); }
+.btn-green     { background: var(--green); color: #fff; }
+.btn-ghost     { background: transparent; color: var(--text-2); }
+.btn:disabled  { opacity: .45; pointer-events: none; }
+.btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
+.btn-lg { height: 52px; padding: 0 28px; font-size: 16px; }
+
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font: 600 11px 'Outfit', sans-serif;
+  letter-spacing: .02em;
+}
+.badge-orange { background: #FFF0E6; color: var(--orange); }
+.badge-green  { background: #EDF7E2; color: #4a8c1e; }
+.badge-gray   { background: #f2f2f2; color: var(--text-3); }
+
+.section-title {
+  font: 700 22px 'Outfit', sans-serif;
+  color: var(--text-1);
+  margin: 0 0 4px;
+}
+.section-sub {
+  font: 400 14px 'Outfit', sans-serif;
+  color: var(--text-3);
+  margin: 0 0 24px;
+}
+
+/* ── Form inputs ──────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.field label {
+  font: 600 13px 'Outfit', sans-serif;
+  color: var(--text-2);
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font: 400 14px 'Outfit', sans-serif;
+  color: #111;
+  background: #fafaf8;
+  outline: none;
+  transition: border-color var(--dur);
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--orange);
+}
+.field textarea { resize: vertical; min-height: 88px; }
+.field .hint { font: 400 12px 'Outfit', sans-serif; color: var(--text-3); }
+
+/* ── Page layout ──────────────────────────────────────── */
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── Loading spinner ──────────────────────────────────── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: block !important; }
+}
+@media (min-width: 641px) {
+  .hide-desktop { display: none !important; }
+  .show-mobile { display: none !important; }
+}
