@@ -19,6 +19,7 @@
   --r-pill:   40px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
   --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
   --dur:       200ms;
   --ease:      cubic-bezier(.4,0,.2,1);
 }
@@ -58,8 +59,11 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 }
 .btn:active { transform: scale(.97); }
 .btn-primary   { background: var(--orange); color: #fff; }
+.btn-primary:hover { filter: brightness(.92); }
 .btn-secondary { background: var(--surface); color: var(--text-1); border: 1.5px solid var(--border); }
+.btn-secondary:hover { background: #f0f0ee; }
 .btn-green     { background: var(--green); color: #fff; }
+.btn-green:hover { filter: brightness(.92); }
 .btn-ghost     { background: transparent; color: var(--text-2); }
 .btn:disabled  { opacity: .45; pointer-events: none; }
 .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
@@ -145,6 +149,56 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Hero heading (responsive) ────────────────────────── */
+.hero-h1 {
+  font-size: 54px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+@media (max-width: 768px) {
+  .hero-h1 { font-size: 38px; line-height: 1.18; }
+}
+@media (max-width: 480px) {
+  .hero-h1 { font-size: 30px; line-height: 1.2; }
+}
+
+/* Hero subtitle (responsive) */
+.hero-subtitle {
+  font-size: 18px;
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+@media (max-width: 640px) {
+  .hero-subtitle { font-size: 15px; }
+}
+
+/* Stats bar separator */
+.stat-sep {
+  display: inline-block;
+}
+@media (max-width: 640px) {
+  .stat-sep { display: none; }
+}
+
+/* How-it-works card entrance */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.how-card {
+  animation: fadeSlideUp .55s ease both;
+}
+.how-card:nth-child(2) { animation-delay: .1s; }
+.how-card:nth-child(3) { animation-delay: .2s; }
+
+/* ── Trending category card hover ────────────────────── */
+.trending-card:hover {
+  border-color: var(--orange) !important;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
 
 /* ── Mobile ───────────────────────────────────────────── */
 @media (max-width: 640px) {

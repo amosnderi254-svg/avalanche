@@ -119,7 +119,7 @@ export default function ListingsPage() {
 
         {/* Grid */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} style={{ borderRadius: 'var(--r-md)', background: '#f5f4f2', paddingTop: '66%', animation: 'pulse 1.4s ease-in-out infinite' }}/>
             ))}
@@ -138,7 +138,7 @@ export default function ListingsPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
               {listings.map(listing => (
                 <ListingCard key={listing.id} listing={listing}/>
               ))}
@@ -148,7 +148,7 @@ export default function ListingsPage() {
             {(hasMore || loadingMore) && (
               <div style={{ textAlign: 'center', marginTop: 32 }}>
                 {loadingMore ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, marginBottom: 16 }}>
                     {Array.from({ length: 4 }).map((_, i) => (
                       <div key={i} style={{ borderRadius: 'var(--r-md)', background: '#f5f4f2', paddingTop: '66%', animation: 'pulse 1.4s ease-in-out infinite' }}/>
                     ))}

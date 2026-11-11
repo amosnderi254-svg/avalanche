@@ -1,13 +1,30 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useRef } from 'react';
+
+const NAV_CATS = [
+  { id: 'all',       label: 'All items'   },
+  { id: 'bikes',     label: 'Bikes'       },
+  { id: 'strollers', label: 'Strollers'   },
+  { id: 'toys',      label: 'Toys'        },
+  { id: 'baby-gear', label: 'Baby gear'   },
+  { id: 'books',     label: 'Books'       },
+  { id: 'clothes',   label: 'Clothes'     },
+  { id: 'shoes',     label: 'Shoes'       },
+  { id: 'car-seats', label: 'Car seats'   },
+];
 
 export default function Nav() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchActive, setSearchActive] = useState(false);
   const [query, setQuery] = useState('');
+  const [logoError, setLogoError] = useState(false);
+  const [iconError, setIconError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const activeCat = searchParams.get('cat') || 'all';
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -17,32 +34,47 @@ export default function Nav() {
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 100,
-      background: '#fff', borderBottom: '1px solid var(--border)',
-      boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+      background: '#fff',
+      boxShadow: '0 1px 6px rgba(0,0,0,.07)',
     }}>
+
+      {/* Top bar */}
       <div className="container" style={{
         display: 'flex', alignItems: 'center', gap: 12, height: 64,
       }}>
 
         {/* Logo */}
         {!searchActive && (
-          <Link href="/" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            {/* Full logo on desktop, icon-only on mobile */}
-            <img
-              src="/logo.png"
-              alt="MyTinyverse"
-              height={36}
-              style={{ height: 36, width: 'auto', display: 'block' }}
-              className="hide-mobile"
-            />
-            <img
-              src="/favicon-source.png"
-              alt="MyTinyverse"
-              width={32}
-              height={32}
-              style={{ width: 32, height: 32, borderRadius: 8, display: 'block' }}
-              className="show-mobile"
-            />
+          <Link href="/" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', textDecoration: 'none', gap: 8 }}>
+            {!logoError ? (
+              <img
+                src="/logo.png"
+                alt="MyTinyverse"
+                height={36}
+                style={{ height: 36, width: 'auto', display: 'block' }}
+                className="hide-mobile"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <span className="hide-mobile" style={{ font: '700 18px Outfit,sans-serif', color: 'var(--orange)' }}>
+                MyTinyverse
+              </span>
+            )}
+            {!iconError ? (
+              <img
+                src="/favicon-source.png"
+                alt="MyTinyverse"
+                width={32}
+                height={32}
+                style={{ width: 32, height: 32, borderRadius: 8, display: 'block' }}
+                className="show-mobile"
+                onError={() => setIconError(true)}
+              />
+            ) : (
+              <span className="show-mobile" style={{ font: '700 16px Outfit,sans-serif', color: 'var(--orange)' }}>
+                MTV
+              </span>
+            )}
           </Link>
         )}
 
@@ -56,8 +88,10 @@ export default function Nav() {
           maxWidth: searchActive ? '100%' : 420,
         }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <svg style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:'var(--text-3)', pointerEvents:'none' }}
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none' }}
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            >
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <input
@@ -77,12 +111,16 @@ export default function Nav() {
                 color: '#111',
                 background: '#fafaf8',
                 outline: 'none',
+                transition: 'border-color .15s',
               }}
             />
           </div>
           {searchActive && (
-            <button type="button" onClick={() => { setQuery(''); setSearchActive(false); inputRef.current?.blur(); }}
-              style={{ background:'none', border:'none', font:'600 13px Outfit,sans-serif', color:'var(--orange)', cursor:'pointer', flexShrink:0 }}>
+            <button
+              type="button"
+              onClick={() => { setQuery(''); setSearchActive(false); inputRef.current?.blur(); }}
+              style={{ background: 'none', border: 'none', font: '600 13px Outfit,sans-serif', color: 'var(--orange)', cursor: 'pointer', flexShrink: 0 }}
+            >
               Cancel
             </button>
           )}
@@ -90,8 +128,7 @@ export default function Nav() {
 
         {/* Actions */}
         {!searchActive && (
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-            {/* Saved */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <Link
               href="/saved"
               title="Saved listings"
@@ -100,7 +137,6 @@ export default function Nav() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1.5px solid var(--border)', background: '#fff',
                 color: 'var(--text-2)', textDecoration: 'none',
-                transition: 'border-color .15s',
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -113,6 +149,50 @@ export default function Nav() {
           </div>
         )}
       </div>
+
+      {/* Category bar */}
+      <div style={{ borderTop: '1px solid var(--border)' }}>
+        <div
+          className="container"
+          style={{
+            display: 'flex',
+            gap: 0,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            height: 42,
+            alignItems: 'center',
+          }}
+        >
+          {NAV_CATS.map(cat => {
+            const active = activeCat === cat.id;
+            return (
+              <Link
+                key={cat.id}
+                href={cat.id === 'all' ? '/' : `/?cat=${cat.id}`}
+                style={{
+                  flexShrink: 0,
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 14px',
+                  font: `${active ? '600' : '400'} 13px Outfit,sans-serif`,
+                  color: active ? 'var(--orange)' : 'var(--text-2)',
+                  borderBottom: `2px solid ${active ? 'var(--orange)' : 'transparent'}`,
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                  transition: 'color .15s, border-color .15s',
+                }}
+              >
+                {cat.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <style>{`
+        header .container ::-webkit-scrollbar { display: none; }
+      `}</style>
     </header>
   );
 }
