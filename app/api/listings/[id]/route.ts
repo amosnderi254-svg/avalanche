@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // (status page, edit page, admin checks -- not a real buyer view)
     const notrack = new URL(req.url).searchParams.get('notrack');
     if (!notrack) {
-      supabase.rpc('increment_views', { listing_id: params.id }).then(() => {}).catch(() => {});
+     void supabase.rpc('increment_views', { listing_id: params.id });
     }
 
     return NextResponse.json(data);
