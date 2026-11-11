@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 
-// GET /api/listings?category=bikes&q=trek&page=1&limit=20
 export async function GET(req: NextRequest) {
   try {
     const supabase = createServerClient();
@@ -18,7 +17,6 @@ export async function GET(req: NextRequest) {
       .from('listings')
       .select('*', { count: 'exact' })
       .eq('status', 'live')
-      // Exclude expired listings (expires_at is null for older rows = never expires)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -36,14 +34,12 @@ export async function GET(req: NextRequest) {
     const total = count ?? 0;
     const hasMore = (from + (data?.length ?? 0)) < total;
 
-    // Log search event fire-and-forget -- only when a text query is present
-    // (category-only browsing is navigation, not a search intent signal)
     if (q && q.trim()) {
-      supabase.from('search_events').insert({
+      void supabase.from('search_events').insert({
         query: q.trim().toLowerCase(),
         category: category || null,
         result_count: total,
-      }).then(() => {}).catch(() => {});
+      });
     }
 
     return NextResponse.json({ listings: data, page, total, hasMore });
@@ -53,7 +49,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/listings -- create a new listing
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -64,7 +59,6 @@ export async function POST(req: NextRequest) {
       fee_tier, fee_amount, mpesa_code,
     } = body;
 
-    // Basic validation
     if (!title || !category || !condition || !location || !seller_name || !seller_phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
@@ -88,14 +82,12 @@ export async function POST(req: NextRequest) {
         fee_tier: fee_tier || null,
         fee_amount: Number(fee_amount) || 0,
         mpesa_code: mpesa_code || null,
-        // edit_token and expires_at are set by DB defaults
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Feature 1: Notify admin via ntfy.sh (fire-and-forget, never block the response)
     const notifyChannel = process.env.ADMIN_NOTIFY_CHANNEL;
     if (notifyChannel) {
       const priceLabel = data.price === 0 ? 'FREE (donation)' : `KES ${data.price.toLocaleString()}`;
@@ -109,7 +101,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'text/plain',
         },
         body: `${data.title} -- ${priceLabel}${feeLabel}\nSeller: ${data.seller_name} (${data.seller_phone})\nLocation: ${data.location}\nReview: ${process.env.NEXT_PUBLIC_APP_URL}/admin`,
-      }).catch(() => { /* silent fail -- notification is best-effort */ });
+      }).catch(() => {});
     }
 
     return NextResponse.json(data, { status: 201 });
