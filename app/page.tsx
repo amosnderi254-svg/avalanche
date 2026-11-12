@@ -26,7 +26,7 @@ const EARNINGS = [
     name:     'Janet K.',
     area:     'Karen',
     amount:   'KES 8,500',
-    quote:    'I had a Graco travel system sitting in the garage for two years. Listed it on a Thursday, sold it Saturday morning. The money paid for two months of swimming lessons.',
+    quote:    'Listed Thursday, sold Saturday. The money paid for two months of swimming lessons.',
     items:    'Stroller, car seat, bouncer',
     color:    '#fff4ec',
     accent:   'var(--orange)',
@@ -35,7 +35,7 @@ const EARNINGS = [
     name:     'David M.',
     area:     'Runda',
     amount:   'KES 14,200',
-    quote:    'Three kids in, we had bikes from age 2 all the way to 12. Cleared the whole shed in one weekend. That money is now sitting in school fees savings.',
+    quote:    'Cleared the whole shed in one weekend. That money is in school fees savings now.',
     items:    'Four bikes and two scooters',
     color:    '#edf7e2',
     accent:   'var(--green)',
@@ -44,7 +44,7 @@ const EARNINGS = [
     name:     'Wanjiku N.',
     area:     'Kilimani',
     amount:   'KES 3,500',
-    quote:    'Just the small stuff - board books, two sets of building blocks, a baby rocker. Things I thought nobody would want. Parents came from across town for them.',
+    quote:    'Things I thought nobody would want. Parents came from across town for them.',
     items:    'Books, toys, baby rocker',
     color:    '#e8f4fd',
     accent:   '#1565C0',
@@ -145,8 +145,7 @@ export default function Home() {
                   />
                 )}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ font: '700 18px Outfit,sans-serif', color: '#fff', margin: '0 0 2px' }}>{value}</div>
-                  <div style={{ font: '400 11px Outfit,sans-serif', color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+                  <div style={{ font: '700 18px Outfit,sans-serif', color: '#fff' }}>{value}</div>
                 </div>
               </div>
             ))}
@@ -166,9 +165,6 @@ export default function Home() {
             <h2 style={{ font: '700 20px Outfit,sans-serif', color: 'var(--text-1)', margin: 0 }}>
               What parents are buying right now
             </h2>
-            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>
-              New listings added daily
-            </span>
           </div>
           <div style={{
             display: 'grid',
@@ -244,12 +240,9 @@ export default function Home() {
             <p style={{ font: '600 11px Outfit,sans-serif', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 10px' }}>
               Real parents. Real money.
             </p>
-            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: '0 0 12px', color: 'var(--text-1)' }}>
+            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>
               That thing in your storage is worth real money
             </h2>
-            <p style={{ font: '400 15px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 auto', maxWidth: 520 }}>
-              Parents across Nairobi have cleared garages, sheds and store rooms. Here is what three of them made.
-            </p>
           </div>
 
           <div style={{
@@ -335,11 +328,11 @@ export default function Home() {
             <p style={{ font: '600 11px Outfit,sans-serif', color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 10px' }}>
               Buy safely
             </p>
-            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: '0 0 12px', color: 'var(--text-1)' }}>
+            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: '0 0 6px', color: 'var(--text-1)' }}>
               What to check before you hand over money
             </h2>
-            <p style={{ font: '400 15px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 auto', maxWidth: 520 }}>
-              Some items need a quick safety check. This guide helps you buy with confidence every time.
+            <p style={{ font: '500 15px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
+              Quick checks before you pay.
             </p>
           </div>
 
@@ -451,12 +444,9 @@ export default function Home() {
             <p style={{ font: '600 11px Outfit,sans-serif', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 10px' }}>
               What is sitting in your store room?
             </p>
-            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: '0 0 12px', color: '#fff' }}>
+            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: 0, color: '#fff' }}>
               Check what your stored items are worth
             </h2>
-            <p style={{ font: '400 15px Outfit,sans-serif', color: 'rgba(255,255,255,.55)', margin: '0 auto', maxWidth: 500 }}>
-              Most Nairobi families have between KES 8,000 and KES 20,000 sitting in items they no longer use.
-            </p>
           </div>
 
           <div style={{
@@ -512,12 +502,9 @@ export default function Home() {
             <p style={{ font: '600 12px Outfit,sans-serif', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 10px' }}>
               Simple process
             </p>
-            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: '0 0 12px', color: 'var(--text-1)' }}>
+            <h2 style={{ font: '700 30px/1.2 Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>
               It really is this simple.
             </h2>
-            <p style={{ font: '400 15px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-              Three steps to sell. No account needed, no waiting around.
-            </p>
           </div>
 
           <div style={{
@@ -611,12 +598,12 @@ export default function Home() {
             </h2>
             <p
               style={{
-                font: '400 16px/1.65 Outfit,sans-serif',
+                font: '600 16px Outfit,sans-serif',
                 color: 'var(--text-2)',
                 margin: '0 0 36px',
               }}
             >
-              Whether you have one item or a whole room to clear, it takes five minutes to list and your item reaches families across Nairobi today.
+              Five minutes to list. Nairobi-wide reach.
             </p>
             <div
               style={{
@@ -663,7 +650,7 @@ export default function Home() {
                 MyTinyverse
               </p>
               <p style={{ font: '400 13px/1.65 Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 20px', maxWidth: 220 }}>
-                Where Nairobi parents pass on what their kids have outgrown.
+                Nairobi's parent marketplace.
               </p>
               <a
                 href="https://wa.me/254790784084"
