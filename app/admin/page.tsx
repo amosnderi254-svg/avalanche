@@ -1,10 +1,20 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Nav from '@/components/Nav';
 import Link from 'next/link';
 import type { Listing, Article, ArticleStatus } from '@/types';
 
 const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
+
+// ── Form constants (shared with /sell) ───────────────────────────────────────
+const CATEGORIES = ['Bikes and scooters','Strollers','Car seats','Toys and games','Books','Baby gear','Clothes and shoes','Baby monitors','Bouncers and rockers','Cots and cribs','Other'];
+const AGE_RANGES = ['0 to 6 months','6 to 18 months','1 to 3 years','3 to 5 years','5 to 8 years','8 and above','All ages'];
+const CONDITIONS = [
+  { id: 'like_new', label: 'Like new', desc: 'Used once or twice. Looks brand new.' },
+  { id: 'good', label: 'Good', desc: 'Some wear but works perfectly.' },
+  { id: 'fair', label: 'Fair', desc: 'Visible wear. Fully functional.' },
+];
+const NAIROBI_HOODS = ['Westlands','Karen','Kilimani','Runda','Gigiri','Lavington','Kasarani','Thika Road','Muthaiga','Ruaka','Langata','Parklands','Eastlands','South B','South C','Embakasi','Donholm','Buruburu','Other'];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +159,7 @@ export default function AdminPage() {
   const [pin, setPin] = useState('');
   const [authed, setAuthed] = useState(false);
   const [pinError, setPinError] = useState('');
-  const [view, setView] = useState<'dashboard' | 'moderation' | 'blog'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'moderation' | 'blog' | 'post' | 'reports'>('dashboard');
 
   // Dashboard state
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -186,6 +196,19 @@ export default function AdminPage() {
   const [genLength, setGenLength] = useState<'short' | 'standard' | 'long'>('standard');
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+
+  // Post-on-behalf state
+  const [postForm, setPostForm] = useState({
+    seller_name: '', seller_phone: '', seller_whatsapp: '',
+    title: '', category: '', age_range: '', price: '', is_donation: false,
+    condition: '', description: '', location: '', admin_note: '',
+  });
+  const [postPhotos, setPostPhotos] = useState<File[]>([]);
+  const [postPreviews, setPostPreviews] = useState<string[]>([]);
+  const [postErrors, setPostErrors] = useState<Record<string, string>>({});
+  const [postSubmitting, setPostSubmitting] = useState(false);
+  const [postSuccess, setPostSuccess] = useState<{ id: string; title: string } | null>(null);
+  const postFileRef = useRef<HTMLInputElement>(null);
 
   // ── Auth ──
   function handlePin(e: React.FormEvent) {
@@ -225,7 +248,7 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (authed && view === 'dashboard') fetchStats();
+    if (authed && (view === 'dashboard' || view === 'reports')) fetchStats();
   }, [authed, view, fetchStats]);
 
   useEffect(() => {
@@ -405,6 +428,55 @@ export default function AdminPage() {
     } finally { setBlogActionLoading(null); }
   }
 
+  // ── Post on behalf ──
+  async function submitOnBehalf() {
+    const errors: Record<string, string> = {};
+    if (!postForm.seller_name.trim()) errors.seller_name = 'Required';
+    if (!postForm.seller_phone.trim()) errors.seller_phone = 'Required';
+    if (!postForm.title.trim()) errors.title = 'Required';
+    if (!postForm.category) errors.category = 'Select a category';
+    if (!postForm.condition) errors.condition = 'Select a condition';
+    if (!postForm.location) errors.location = 'Select a neighbourhood';
+    if (!postForm.is_donation && !postForm.price) errors.price = 'Enter a price or mark as free';
+    if (Object.keys(errors).length > 0) { setPostErrors(errors); return; }
+
+    setPostSubmitting(true);
+    setPostErrors({});
+    try {
+      const fd = new FormData();
+      fd.append('seller_name', postForm.seller_name.trim());
+      fd.append('seller_phone', postForm.seller_phone.trim());
+      fd.append('seller_whatsapp', postForm.seller_whatsapp.trim());
+      fd.append('title', postForm.title.trim());
+      fd.append('category', postForm.category);
+      fd.append('age_range', postForm.age_range);
+      fd.append('price', postForm.is_donation ? '0' : postForm.price);
+      fd.append('is_donation', String(postForm.is_donation));
+      fd.append('condition', postForm.condition);
+      fd.append('description', postForm.description.trim());
+      fd.append('location', postForm.location);
+      fd.append('admin_note', postForm.admin_note.trim());
+      postPhotos.forEach((f, i) => fd.append(`photo${i}`, f));
+
+      const res = await fetch('/api/admin/create-listing', {
+        method: 'POST',
+        headers: { 'x-admin-pin': ADMIN_PIN },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to post listing');
+
+      setPostSuccess(data.listing);
+      setPostForm({ seller_name: '', seller_phone: '', seller_whatsapp: '', title: '', category: '', age_range: '', price: '', is_donation: false, condition: '', description: '', location: '', admin_note: '' });
+      setPostPhotos([]);
+      setPostPreviews([]);
+    } catch (err) {
+      setPostErrors({ _form: err instanceof Error ? err.message : 'Something went wrong' });
+    } finally {
+      setPostSubmitting(false);
+    }
+  }
+
   // ── PIN gate ──
   if (!authed) {
     return (
@@ -468,7 +540,7 @@ export default function AdminPage() {
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => {
-                if (view === 'dashboard') fetchStats();
+                if (view === 'dashboard' || view === 'reports') fetchStats();
                 else if (view === 'moderation') fetchListings(modTab);
                 else if (view === 'blog') fetchArticles();
               }}
@@ -479,10 +551,16 @@ export default function AdminPage() {
         </div>
 
         {/* View tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
           <button style={tabStyle(view === 'dashboard')} onClick={() => setView('dashboard')}>Dashboard</button>
           <button style={tabStyle(view === 'moderation')} onClick={() => setView('moderation')}>
             Moderation {stats && stats.tiles.pending_review > 0 ? `(${stats.tiles.pending_review})` : ''}
+          </button>
+          <button style={tabStyle(view === 'post')} onClick={() => { setView('post'); setPostSuccess(null); }}>
+            Post Listing
+          </button>
+          <button style={tabStyle(view === 'reports')} onClick={() => setView('reports')}>
+            Reports
           </button>
           <button style={tabStyle(view === 'blog')} onClick={() => { setView('blog'); setEditingArticle(null); setIsNewArticle(false); }}>
             Blog
@@ -690,6 +768,424 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </>
+        )}
+
+        {/* ── POST LISTING VIEW ── */}
+        {view === 'post' && (
+          <>
+            {postSuccess ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#E8F5E9', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <h2 style={{ font: '700 20px Outfit,sans-serif', margin: '0 0 8px' }}>Listing Posted!</h2>
+                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 24px' }}>
+                  &ldquo;{postSuccess.title}&rdquo; is now live on the marketplace.
+                </p>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Link href={`/listing/${postSuccess.id}`} target="_blank" className="btn btn-green btn-sm">View Listing</Link>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setPostSuccess(null)}>Post Another</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ maxWidth: 640 }}>
+                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 28px' }}>
+                  Post a listing on behalf of a parent. It goes live immediately - no M-Pesa required.
+                </p>
+
+                {/* Seller Info */}
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
+                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Seller Info</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <label style={labelStyle}>Name *</label>
+                      <input style={{ ...inputStyle, borderColor: postErrors.seller_name ? '#e53935' : 'var(--border)' }}
+                        value={postForm.seller_name}
+                        onChange={e => setPostForm(f => ({ ...f, seller_name: e.target.value }))}
+                        placeholder="e.g. Jane Kamau"/>
+                      {postErrors.seller_name && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.seller_name}</span>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Phone *</label>
+                      <input style={{ ...inputStyle, borderColor: postErrors.seller_phone ? '#e53935' : 'var(--border)' }}
+                        value={postForm.seller_phone}
+                        onChange={e => setPostForm(f => ({ ...f, seller_phone: e.target.value }))}
+                        placeholder="07xx xxx xxx"/>
+                      {postErrors.seller_phone && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.seller_phone}</span>}
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <label style={labelStyle}>WhatsApp (if different from phone)</label>
+                    <input style={inputStyle}
+                      value={postForm.seller_whatsapp}
+                      onChange={e => setPostForm(f => ({ ...f, seller_whatsapp: e.target.value }))}
+                      placeholder="Leave blank to use phone number above"/>
+                  </div>
+                </div>
+
+                {/* Item Details */}
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
+                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Item Details</h3>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Title *</label>
+                    <input style={{ ...inputStyle, borderColor: postErrors.title ? '#e53935' : 'var(--border)' }}
+                      value={postForm.title}
+                      onChange={e => setPostForm(f => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Cybex Priam Stroller - excellent condition"/>
+                    {postErrors.title && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.title}</span>}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                    <div>
+                      <label style={labelStyle}>Category *</label>
+                      <select style={{ ...inputStyle, borderColor: postErrors.category ? '#e53935' : 'var(--border)' }}
+                        value={postForm.category}
+                        onChange={e => setPostForm(f => ({ ...f, category: e.target.value }))}>
+                        <option value="">Select category</option>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      {postErrors.category && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.category}</span>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Age Range</label>
+                      <select style={inputStyle}
+                        value={postForm.age_range}
+                        onChange={e => setPostForm(f => ({ ...f, age_range: e.target.value }))}>
+                        <option value="">Select age range</option>
+                        {AGE_RANGES.map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Condition *</label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {CONDITIONS.map(c => (
+                        <button key={c.id} type="button"
+                          onClick={() => setPostForm(f => ({ ...f, condition: c.id }))}
+                          style={{
+                            padding: '8px 14px', border: `2px solid ${postForm.condition === c.id ? 'var(--orange)' : 'var(--border)'}`,
+                            borderRadius: 8, background: postForm.condition === c.id ? '#FFF5EE' : '#fff',
+                            cursor: 'pointer', textAlign: 'left',
+                          }}>
+                          <div style={{ font: '600 13px Outfit,sans-serif', color: postForm.condition === c.id ? 'var(--orange)' : 'var(--text-1)' }}>{c.label}</div>
+                          <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)' }}>{c.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    {postErrors.condition && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 4 }}>{postErrors.condition}</span>}
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Price *</label>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 14px Outfit,sans-serif', cursor: 'pointer', flexShrink: 0 }}>
+                        <input type="checkbox" checked={postForm.is_donation}
+                          onChange={e => setPostForm(f => ({ ...f, is_donation: e.target.checked, price: '' }))}/>
+                        Free / Donation
+                      </label>
+                      {!postForm.is_donation && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)' }}>KES</span>
+                          <input style={{ ...inputStyle, maxWidth: 160, borderColor: postErrors.price ? '#e53935' : 'var(--border)' }}
+                            type="number" min="0" placeholder="e.g. 8500"
+                            value={postForm.price}
+                            onChange={e => setPostForm(f => ({ ...f, price: e.target.value }))}/>
+                        </div>
+                      )}
+                    </div>
+                    {postErrors.price && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 4 }}>{postErrors.price}</span>}
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Description</label>
+                    <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' } as React.CSSProperties}
+                      value={postForm.description}
+                      onChange={e => setPostForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Describe the item - brand, size, any defects, what is included..."/>
+                  </div>
+                </div>
+
+                {/* Photos */}
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
+                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 4px', color: 'var(--text-1)' }}>Photos</h3>
+                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px' }}>Up to 3 photos. First photo is the cover image.</p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {postPreviews.map((src, i) => (
+                      <div key={i} style={{ position: 'relative' }}>
+                        <img src={src} alt="" style={{ width: 100, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}/>
+                        <button type="button"
+                          onClick={() => {
+                            setPostPhotos(prev => prev.filter((_, j) => j !== i));
+                            setPostPreviews(prev => prev.filter((_, j) => j !== i));
+                          }}
+                          style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#e53935', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 11px sans-serif', lineHeight: 1 }}>
+                          x
+                        </button>
+                        {i === 0 && (
+                          <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'var(--orange)', color: '#fff', borderRadius: 4, padding: '1px 5px', font: '600 9px Outfit,sans-serif' }}>Cover</div>
+                        )}
+                      </div>
+                    ))}
+                    {postPhotos.length < 3 && (
+                      <button type="button"
+                        onClick={() => postFileRef.current?.click()}
+                        style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 8, background: '#fafaf9', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5">
+                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span style={{ font: '400 10px Outfit,sans-serif', color: 'var(--text-3)' }}>Add photo</span>
+                      </button>
+                    )}
+                  </div>
+                  <input ref={postFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file || postPhotos.length >= 3) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        setPostPhotos(prev => [...prev, file]);
+                        setPostPreviews(prev => [...prev, ev.target?.result as string]);
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }}/>
+                </div>
+
+                {/* Location + Admin Note */}
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Location and Notes</h3>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Neighbourhood *</label>
+                    <select style={{ ...inputStyle, borderColor: postErrors.location ? '#e53935' : 'var(--border)' }}
+                      value={postForm.location}
+                      onChange={e => setPostForm(f => ({ ...f, location: e.target.value }))}>
+                      <option value="">Select neighbourhood</option>
+                      {NAIROBI_HOODS.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    {postErrors.location && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.location}</span>}
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Admin Note (internal only - not shown to buyers)</label>
+                    <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' } as React.CSSProperties}
+                      value={postForm.admin_note}
+                      onChange={e => setPostForm(f => ({ ...f, admin_note: e.target.value }))}
+                      placeholder="Any notes about this listing or the parent..."/>
+                  </div>
+                </div>
+
+                {postErrors._form && (
+                  <div style={{ background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
+                    <p style={{ font: '400 14px Outfit,sans-serif', color: '#c62828', margin: 0 }}>{postErrors._form}</p>
+                  </div>
+                )}
+
+                <button
+                  className="btn btn-primary btn-lg"
+                  onClick={submitOnBehalf}
+                  disabled={postSubmitting}
+                  style={{ width: '100%' }}>
+                  {postSubmitting ? 'Posting...' : 'Post Listing Now'}
+                </button>
+                <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', textAlign: 'center', margin: '10px 0 0' }}>
+                  Listing goes live immediately. No M-Pesa required.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── REPORTS VIEW ── */}
+        {view === 'reports' && (
+          <>
+            {statsLoading && (
+              <div style={{ textAlign: 'center', padding: 60 }}>
+                <div className="spinner" style={{ margin: '0 auto' }}/>
+              </div>
+            )}
+            {!statsLoading && !stats && (
+              <div style={{ textAlign: 'center', padding: 60 }}>
+                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 16px' }}>Could not load report data.</p>
+                <button className="btn btn-secondary btn-sm" onClick={fetchStats}>Retry</button>
+              </div>
+            )}
+            {!statsLoading && stats && (
+              <>
+                {/* Inventory Snapshot */}
+                <SectionTitle>Inventory Snapshot</SectionTitle>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                  <StatTile label="Live Listings" value={stats.tiles.live_listings} accent/>
+                  <StatTile label="Pending Review" value={stats.tiles.pending_review} sub={stats.tiles.pending_review > 0 ? 'Needs attention' : 'All clear'}/>
+                  <StatTile label="Total Submitted" value={stats.tiles.total_listings}/>
+                  <StatTile label="Approval Rate" value={`${stats.tiles.approval_rate}%`} sub="live vs submitted"/>
+                  <StatTile label="Submitted (30d)" value={stats.tiles.submitted_last_30d}/>
+                  <StatTile label="Expiring Soon" value={stats.expiring_soon.length} sub="next 7 days"/>
+                </div>
+
+                {/* Inquiry Funnel */}
+                <SectionTitle>Inquiry Funnel</SectionTitle>
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 24px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Total Views', value: stats.tiles.total_views, bg: '#E3F2FD', fg: '#1565C0' },
+                      { label: 'WA Clicks', value: stats.tiles.total_wa_clicks, bg: '#E8F5E9', fg: '#2E7D32' },
+                    ].map((step, i, arr) => (
+                      <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ background: step.bg, borderRadius: 12, padding: '18px 24px', textAlign: 'center', minWidth: 130 }}>
+                          <div style={{ font: '700 26px Outfit,sans-serif', color: step.fg }}>{step.value.toLocaleString()}</div>
+                          <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', marginTop: 3 }}>{step.label}</div>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" style={{ flexShrink: 0 }}>
+                            <path d="M2 9 L22 9 M15 3 L24 9 L15 15" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ background: '#FFF5EE', borderRadius: 12, padding: '18px 24px', textAlign: 'center', minWidth: 130 }}>
+                      <div style={{ font: '700 26px Outfit,sans-serif', color: 'var(--orange)' }}>
+                        {stats.tiles.total_views > 0 ? `${Math.round((stats.tiles.total_wa_clicks / stats.tiles.total_views) * 100)}%` : '--'}
+                      </div>
+                      <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', marginTop: 3 }}>Click Rate</div>
+                    </div>
+                  </div>
+                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '14px 0 0' }}>
+                    {stats.tiles.total_views === 0 && 'No views recorded yet.'}
+                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views >= 0.1 && 'Strong engagement - over 10% of views result in a WhatsApp inquiry.'}
+                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views >= 0.05 && stats.tiles.total_wa_clicks / stats.tiles.total_views < 0.1 && 'Decent engagement. Better photos and pricing can improve click rate.'}
+                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views < 0.05 && 'Low click rate. Encourage sellers to add quality photos and competitive pricing.'}
+                  </p>
+                </div>
+
+                {/* Category Health */}
+                <SectionTitle>Category Health</SectionTitle>
+                {stats.category_stats.length === 0 ? (
+                  <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)' }}>No live listings yet.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto', background: '#fff', border: '1px solid var(--border)', borderRadius: 14 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 13px Outfit,sans-serif' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', background: '#fafaf9' }}>
+                          {['Category', 'Live', 'Views', 'WA Clicks', 'Click Rate', 'Avg Price', 'Signal'].map(h => (
+                            <th key={h} style={{ padding: '10px 14px', textAlign: 'left', font: '600 11px Outfit,sans-serif', color: 'var(--text-3)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.05em' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...stats.category_stats].sort((a, b) => b.whatsapp_clicks - a.whatsapp_clicks).map((row, i, arr) => {
+                          const signal = row.click_rate >= 10 ? { bg: '#E8F5E9', fg: '#2E7D32', label: 'Hot' }
+                            : row.click_rate >= 5 ? { bg: '#FFF8E1', fg: '#F57F17', label: 'Good' }
+                            : row.live > 0 ? { bg: '#FFF3E0', fg: '#E65100', label: 'Slow' }
+                            : { bg: '#f5f5f5', fg: '#9e9e9e', label: 'None' };
+                          return (
+                            <tr key={row.category} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                              <td style={{ padding: '10px 14px', font: '600 13px Outfit,sans-serif', color: 'var(--text-1)', whiteSpace: 'nowrap' }}>{categoryLabel(row.category)}</td>
+                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.live}</td>
+                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.views.toLocaleString()}</td>
+                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.whatsapp_clicks.toLocaleString()}</td>
+                              <td style={{ padding: '10px 14px' }}>
+                                <span style={{ background: row.click_rate >= 10 ? '#e8f5e9' : row.click_rate >= 5 ? '#fff8e1' : '#f5f5f5', color: row.click_rate >= 10 ? '#2e7d32' : row.click_rate >= 5 ? '#f57f17' : 'var(--text-3)', borderRadius: 6, padding: '2px 8px', font: '600 12px Outfit,sans-serif' }}>
+                                  {row.click_rate}%
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{row.avg_price > 0 ? `KES ${row.avg_price.toLocaleString()}` : '--'}</td>
+                              <td style={{ padding: '10px 14px' }}>
+                                <span style={{ background: signal.bg, color: signal.fg, borderRadius: 6, padding: '2px 8px', font: '600 11px Outfit,sans-serif' }}>{signal.label}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Revenue */}
+                <SectionTitle>Revenue</SectionTitle>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
+                  <StatTile label="Total Revenue" value={fmtKES(stats.tiles.total_revenue)} accent/>
+                  <StatTile label="Avg per Listing" value={stats.tiles.total_listings > 0 ? fmtKES(Math.round(stats.tiles.total_revenue / stats.tiles.total_listings)) : 'KES 0'} sub="all statuses"/>
+                </div>
+                {stats.revenue_by_tier.length > 0 && (
+                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0', marginBottom: 12 }}>
+                    {[...stats.revenue_by_tier].sort((a, b) => b.revenue - a.revenue).map((t, i, arr) => (
+                      <div key={t.tier} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-1)' }}>{tierLabel(t.tier)}</span>
+                        <span style={{ font: '700 15px Outfit,sans-serif', color: t.revenue > 0 ? 'var(--green)' : 'var(--text-3)' }}>{fmtKES(t.revenue)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {stats.revenue_by_month.some(d => d.revenue > 0) && (
+                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px' }}>
+                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 12px' }}>Revenue - Last 6 Months</p>
+                    <BarChart data={stats.revenue_by_month}/>
+                  </div>
+                )}
+
+                {/* Market Signals */}
+                <SectionTitle>Market Signals</SectionTitle>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 10px' }}>Top Searches (30d)</p>
+                    {stats.top_searches.length === 0 ? (
+                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No data yet.</p>
+                    ) : (
+                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
+                        {stats.top_searches.map((s, i) => (
+                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.top_searches.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
+                            <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-3)', background: '#f5f4f2', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 10px' }}>Demand Gaps (0 results)</p>
+                    {stats.demand_gaps.length === 0 ? (
+                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No zero-result searches yet.</p>
+                    ) : (
+                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
+                        {stats.demand_gaps.map((s, i) => (
+                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.demand_gaps.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
+                            <span style={{ font: '600 13px Outfit,sans-serif', color: '#e53935', background: '#ffebee', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expiring Soon */}
+                {stats.expiring_soon.length > 0 && (
+                  <>
+                    <SectionTitle>Expiring Soon - Next 7 Days</SectionTitle>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {stats.expiring_soon.map(l => (
+                        <div key={l.id} style={{ background: '#fff', border: '1px solid #ffe0b2', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <div>
+                            <p style={{ font: '600 14px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-1)' }}>{l.title}</p>
+                            <p style={{ font: '400 12px Outfit,sans-serif', margin: 0, color: 'var(--text-3)' }}>{l.seller_name} - {fmtKES(l.price || 0)}</p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                            <span style={{ background: '#FFF3E0', color: 'var(--orange)', borderRadius: 6, padding: '4px 10px', font: '600 12px Outfit,sans-serif', whiteSpace: 'nowrap' }}>
+                              {daysUntil(l.expires_at as string)}d left
+                            </span>
+                            <Link href={`/listing/${l.id}`} className="btn btn-secondary btn-sm" target="_blank">View</Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </>
         )}
