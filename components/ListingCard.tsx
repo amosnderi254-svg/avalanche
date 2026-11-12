@@ -105,8 +105,16 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ font: '700 18px Outfit,sans-serif', color: listing.price === 0 ? 'var(--green)' : 'var(--text-1)' }}>
-            {listing.price === 0 ? 'FREE' : `KES ${listing.price.toLocaleString()}`}
+          <span style={{ font: '700 18px Outfit,sans-serif', color: listing.price === 0 ? 'var(--green)' : 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            {listing.price === 0 ? 'FREE' : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+                KES {listing.price.toLocaleString()}
+              </>
+            )}
           </span>
         </div>
 
