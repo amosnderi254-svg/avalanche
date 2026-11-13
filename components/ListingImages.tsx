@@ -57,21 +57,6 @@ export default function ListingImages({ images, title }: Props) {
               cursor: 'zoom-in',
             }}
           >
-            {/* Blurred backdrop fills container */}
-            <img
-              src={src}
-              alt=""
-              aria-hidden="true"
-              style={{
-                position: 'absolute', inset: 0,
-                width: '100%', height: '100%',
-                objectFit: 'cover',
-                filter: 'blur(22px)',
-                transform: 'scale(1.12)',
-                opacity: 0.6,
-              }}
-            />
-            {/* Sharp subject — contain keeps full item visible */}
             <img
               src={src}
               alt={`${title}${images.length > 1 ? ` ${i + 1}` : ''}`}
@@ -126,21 +111,6 @@ export default function ListingImages({ images, title }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          {/* Blurred ambient glow behind the main image */}
-          <img
-            src={images[lightbox]}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover',
-              filter: 'blur(40px)',
-              opacity: 0.18,
-              transform: 'scale(1.05)',
-            }}
-          />
-
           {/* Main image */}
           <img
             src={images[lightbox]}
