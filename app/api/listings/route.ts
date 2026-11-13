@@ -15,14 +15,17 @@ export async function GET(req: NextRequest) {
     const to = from + limit - 1;
     const now = new Date().toISOString();
 
+    const min  = searchParams.get('min');
+    const max  = searchParams.get('max');
+    const area = searchParams.get('area');
+    const sort = searchParams.get('sort') || 'newest';
+
     let query = supabase
       .from('listings')
       .select('*', { count: 'exact' })
       .eq('status', 'live')
       // Exclude expired listings (expires_at is null for older rows = never expires)
-      .or(`expires_at.is.null,expires_at.gt.${now}`)
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .or(`expires_at.is.null,expires_at.gt.${now}`);
 
     if (category && category !== 'all') {
       query = query.eq('category', category);
@@ -30,6 +33,22 @@ export async function GET(req: NextRequest) {
     if (q) {
       query = query.ilike('title', `%${q}%`);
     }
+    if (min !== null && min !== '') {
+      query = query.gte('price', Number(min));
+    }
+    if (max !== null && max !== '') {
+      query = query.lte('price', Number(max));
+    }
+    if (area) {
+      query = query.ilike('location', `%${area}%`);
+    }
+
+    // Apply sort before pagination
+    if (sort === 'price_asc')  query = query.order('price', { ascending: true });
+    else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+    else                       query = query.order('created_at', { ascending: false });
+
+    query = query.range(from, to);
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -45,6 +64,14 @@ export async function GET(req: NextRequest) {
         category: category || null,
         result_count: total,
       });
+    }
+    // Log filter-only browsing events (area or price filter with no keyword)
+    if (!q && (min || max || area || sort !== 'newest') && total >= 0) {
+      void supabase.from('search_events').insert({
+        query: null,
+        category: category || null,
+        result_count: total,
+      }).then(() => {});
     }
 
     return NextResponse.json({ listings: data, page, total, hasMore });
