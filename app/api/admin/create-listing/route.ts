@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function checkAuth(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin');
-  return pin === ADMIN_PIN;
-}
 
 // POST /api/admin/create-listing
 // Admin posts a listing on behalf of a parent.
@@ -19,8 +13,9 @@ function checkAuth(req: NextRequest) {
 // - Photos uploaded to Supabase storage same as /api/upload
 // - expires_at: 60 days from now
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) {
+    return NextResponse.json({ error: authResult.message }, { status: authResult.status });
   }
 
   try {

@@ -358,7 +358,7 @@ export default function SellPage() {
       const res = await fetch('/api/mpesa/stk-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, amount: fee, account_ref: 'TINYVERSE' }),
+        body: JSON.stringify({ phone, price: priceNum, account_ref: 'TINYVERSE' }),
       });
       const data = await res.json();
       if (data.success) {

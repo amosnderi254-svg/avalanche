@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, createAdminClient } from '@/lib/supabase-server';
+import { getFeeTier } from '@/lib/constants';
 
 // GET /api/listings?category=bikes&q=trek&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -102,12 +103,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Recalculate fee server-side -- never trust client-submitted fee_tier/fee_amount.
+    // A seller could manipulate the payload to pass fee_amount: 0 and skip payment.
+    const listingPrice = Number(price) || 0;
+    const { tier: serverFeeTier, fee: serverFeeAmount } = getFeeTier(listingPrice);
+
+    // Suppress unused variable warning -- client values are intentionally ignored
+    void fee_tier;
+    void fee_amount;
+
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from('listings')
       .insert({
         title: title.trim(),
-        price: Number(price) || 0,
+        price: listingPrice,
         category,
         condition,
         description: description?.trim() || null,
@@ -118,8 +128,8 @@ export async function POST(req: NextRequest) {
         seller_email: seller_email?.trim() || null,
         images: Array.isArray(images) ? images : [],
         status: 'live',
-        fee_tier: fee_tier || null,
-        fee_amount: Number(fee_amount) || 0,
+        fee_tier: serverFeeTier,       // server-calculated, not client value
+        fee_amount: serverFeeAmount,   // server-calculated, not client value
         mpesa_code: mpesa_code || null,
         expires_at: expiresAt.toISOString(),
         // edit_token is set by DB default

@@ -1,16 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function auth(req: NextRequest): boolean {
-  return req.headers.get('x-admin-pin') === ADMIN_PIN;
-}
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 // ── GET /api/admin/shops  -- list all shops ───────────────────────────────────
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const supabase = createAdminClient();
   const { data: shops, error } = await supabase
@@ -44,7 +41,8 @@ export async function GET(req: NextRequest) {
 
 // ── PATCH /api/admin/shops  -- update shop fields ─────────────────────────────
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { id, ...updates } = body;
@@ -80,7 +78,8 @@ export async function PATCH(req: NextRequest) {
 
 // ── POST /api/admin/shops  -- onboard a new shop (promote existing seller or create) ──
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { phone, shop_name, shop_bio, neighbourhood, subscription_tier } = body;

@@ -1,19 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, createAdminClient } from '@/lib/supabase-server';
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function checkAuth(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin');
-  return pin === ADMIN_PIN;
-}
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 // GET /api/admin/listings?status=live&limit=50
 // Defaults to 'live' (auto-approve model: listings are live on submit).
 // Pass status=rejected to see removed listings.
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') || 'live';
@@ -33,7 +29,8 @@ export async function GET(req: NextRequest) {
 
 // PATCH /api/admin/listings -- approve or reject
 export async function PATCH(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const { id, status } = await req.json();
   if (!id || !['live', 'rejected', 'pending'].includes(status)) {
@@ -135,7 +132,8 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/admin/listings
 export async function DELETE(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

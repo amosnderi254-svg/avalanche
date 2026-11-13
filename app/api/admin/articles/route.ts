@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function auth(req: NextRequest) {
-  const pin =
-    req.headers.get('x-admin-pin') ||
-    req.headers.get('authorization')?.replace('Bearer ', '');
-  return pin === ADMIN_PIN;
-}
-
 // ── GET: list all articles (admin sees all statuses) ──────
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status'); // optional filter
@@ -36,7 +29,8 @@ export async function GET(req: NextRequest) {
 
 // ── POST: create a new article ───────────────────────────
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const {
@@ -73,7 +67,8 @@ export async function POST(req: NextRequest) {
 
 // ── PATCH: update article or change status ────────────────
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { id, action, ...fields } = body;
@@ -139,7 +134,8 @@ export async function PATCH(req: NextRequest) {
 
 // ── DELETE: remove article ────────────────────────────────
 export async function DELETE(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { id } = body;

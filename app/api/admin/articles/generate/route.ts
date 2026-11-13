@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function auth(req: NextRequest) {
-  const pin =
-    req.headers.get('x-admin-pin') ||
-    req.headers.get('authorization')?.replace('Bearer ', '');
-  return pin === ADMIN_PIN;
-}
 
 function slugify(text: string): string {
   return text
@@ -29,7 +21,8 @@ function estimateReadingTime(html: string): number {
 }
 
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });

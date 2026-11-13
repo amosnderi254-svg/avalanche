@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,12 +9,11 @@ export const dynamic = 'force-dynamic';
 // GET /api/admin/stats
 // Requires admin PIN in Authorization header: Bearer <PIN>
 // Returns all aggregated dashboard data in one call to minimize round trips.
-export async function GET(req: Request) {
-  // -- Auth guard --
-  const auth = req.headers.get('authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token !== process.env.ADMIN_PIN) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(req: NextRequest) {
+  // -- Auth guard with brute-force lockout --
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) {
+    return NextResponse.json({ error: authResult.message }, { status: authResult.status });
   }
 
   const supabase = createServerClient();

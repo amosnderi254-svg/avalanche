@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
+import { checkAdminPin } from '@/lib/admin-auth';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
-
-function auth(req: NextRequest) {
-  const pin =
-    req.headers.get('x-admin-pin') ||
-    req.headers.get('authorization')?.replace('Bearer ', '');
-  return pin === ADMIN_PIN;
-}
 
 // -- GET: list articles
 // Admin: all statuses. Public (no pin): published only.
 export async function GET(req: NextRequest) {
-  const isAdmin = auth(req);
+  const isAdmin = checkAdminPin(req.headers, getClientIp(req)).ok;
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
 
@@ -39,7 +32,8 @@ export async function GET(req: NextRequest) {
 
 // -- POST: create article (admin only)
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const {
@@ -77,7 +71,8 @@ export async function POST(req: NextRequest) {
 
 // -- PATCH: update article
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { id, action, ...fields } = body;
@@ -129,7 +124,8 @@ export async function PATCH(req: NextRequest) {
 
 // -- DELETE: delete article
 export async function DELETE(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = checkAdminPin(req.headers, getClientIp(req));
+  if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
   const { id } = body;

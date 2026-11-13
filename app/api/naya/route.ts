@@ -1,6 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { createRateLimiter, getClientIp } from '@/lib/rate-limit';
+
+// 20 messages per IP per minute -- generous for real users, blocks bots burning Claude tokens
+const rateLimiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000, keyPrefix: 'naya' });
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -30,6 +34,19 @@ Guidelines:
 - Do NOT make up specific listings or prices that aren't stated`;
 
 export async function POST(req: NextRequest) {
+  // Rate limit: prevent bot abuse of the AI endpoint
+  const ip = getClientIp(req);
+  const rl = rateLimiter.check(ip);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before chatting again.', reply: 'I\'m busy helping lots of parents right now. Please wait a moment and try again!' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
+    );
+  }
+
   try {
     const { messages } = await req.json();
 
