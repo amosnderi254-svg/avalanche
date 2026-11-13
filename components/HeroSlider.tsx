@@ -168,21 +168,15 @@ export default function HeroSlider() {
         />
       ))}
 
-      {/* Gradient scrim - cream left, transparent right */}
+      {/* Soft dark overlay - left heavier for text legibility, right lighter for the image */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(100deg, #FFFDF9 0%, #FFFDF9 38%, rgba(255,253,249,.9) 50%, rgba(255,253,249,.45) 65%, rgba(255,253,249,.0) 80%)',
+        background: 'linear-gradient(100deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.52) 50%, rgba(0,0,0,.28) 100%)',
         zIndex: 1,
-      }}/>
-      {/* Top + bottom vignette */}
-      <div aria-hidden="true" style={{
-        position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,.1) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.15) 100%)',
-        zIndex: 2,
       }}/>
 
       {/* Main content */}
-      <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 60, paddingBottom: 72 }}>
+      <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 32, paddingBottom: 32 }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr auto',
@@ -199,42 +193,43 @@ export default function HeroSlider() {
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 padding: '5px 14px 5px 8px',
-                background: 'rgba(255,255,255,.88)',
-                border: '1.5px solid rgba(240,120,40,.25)',
+                background: 'rgba(255,255,255,.12)',
+                border: '1.5px solid rgba(255,255,255,.28)',
                 borderRadius: 999,
-                marginBottom: 24,
+                marginBottom: 20,
                 backdropFilter: 'blur(8px)',
               }}>
                 <span style={{
                   display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
                   background: '#7DC243',
-                  boxShadow: '0 0 0 3px rgba(125,194,67,.25)',
+                  boxShadow: '0 0 0 3px rgba(125,194,67,.35)',
                   animation: 'heroPulse 2s ease-in-out infinite',
                 }}/>
-                <span style={{ font: '600 12px Outfit,sans-serif', color: '#1A1A1A', letterSpacing: '.01em' }}>
+                <span style={{ font: '600 12px Outfit,sans-serif', color: '#fff', letterSpacing: '.01em' }}>
                   {slide.badge}
                 </span>
               </div>
 
               {/* Headline */}
               <h1 style={{
-                font: '900 clamp(44px,7vw,76px)/1.0 Outfit,sans-serif',
-                margin: '0 0 20px',
-                color: '#1A1A1A',
+                font: '900 clamp(36px,6vw,68px)/1.05 Outfit,sans-serif',
+                margin: '0 0 16px',
+                color: '#fff',
                 letterSpacing: '-0.03em',
+                textShadow: '0 2px 20px rgba(0,0,0,.3)',
               }}>
                 {slide.line1}<br/>
-                <span style={{ color: '#F07828', position: 'relative', display: 'inline-block' }}>
+                <span style={{ color: '#FFAD6B', position: 'relative', display: 'inline-block' }}>
                   {slide.line2}
                   <svg
                     aria-hidden="true"
-                    style={{ position: 'absolute', bottom: -6, left: 0, width: '100%', height: 10 }}
+                    style={{ position: 'absolute', bottom: -4, left: 0, width: '100%', height: 10 }}
                     viewBox="0 0 200 10"
                     preserveAspectRatio="none"
                   >
                     <path
                       d="M0,5 Q25,0 50,5 Q75,10 100,5 Q125,0 150,5 Q175,10 200,5"
-                      fill="none" stroke="#F07828" strokeWidth="2.5" strokeLinecap="round" opacity=".45"
+                      fill="none" stroke="#FFAD6B" strokeWidth="2.5" strokeLinecap="round" opacity=".6"
                     />
                   </svg>
                 </span>
@@ -242,10 +237,11 @@ export default function HeroSlider() {
 
               {/* Subtext */}
               <p style={{
-                font: '500 18px/1.6 Outfit,sans-serif',
-                color: '#4A4A4A',
-                margin: '0 0 36px',
-                maxWidth: 500,
+                font: '500 16px/1.6 Outfit,sans-serif',
+                color: 'rgba(255,255,255,.82)',
+                margin: '0 0 28px',
+                maxWidth: 480,
+                textShadow: '0 1px 8px rgba(0,0,0,.3)',
               }}>
                 {slide.sub}
               </p>
@@ -264,13 +260,13 @@ export default function HeroSlider() {
                   >
                     <path d={item.icon}/>
                   </svg>
-                  <span style={{ font: '500 13px Outfit,sans-serif', color: '#555' }}>{item.text}</span>
+                  <span style={{ font: '500 13px Outfit,sans-serif', color: 'rgba(255,255,255,.8)' }}>{item.text}</span>
                 </div>
               ))}
             </div>
 
             {/* Dot navigation */}
-            <div role="tablist" aria-label="Hero slides" style={{ display: 'flex', gap: 8, marginTop: 32, alignItems: 'center' }}>
+            <div role="tablist" aria-label="Hero slides" style={{ display: 'flex', gap: 8, marginTop: 28, alignItems: 'center' }}>
               {SLIDES.map((s, i) => (
                 <button
                   key={s.id}
@@ -282,7 +278,7 @@ export default function HeroSlider() {
                     width: i === active ? 28 : 8,
                     height: 8,
                     borderRadius: 999,
-                    background: i === active ? '#F07828' : 'rgba(26,26,26,.2)',
+                    background: i === active ? '#F07828' : 'rgba(255,255,255,.35)',
                     border: 'none',
                     cursor: 'pointer',
                     padding: 0,
@@ -299,15 +295,15 @@ export default function HeroSlider() {
                     aria-label={dir === -1 ? 'Previous slide' : 'Next slide'}
                     style={{
                       width: 32, height: 32, borderRadius: '50%',
-                      background: 'rgba(255,255,255,.8)',
-                      border: '1.5px solid rgba(0,0,0,.1)',
+                      background: 'rgba(255,255,255,.18)',
+                      border: '1.5px solid rgba(255,255,255,.3)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer',
-                      backdropFilter: 'blur(4px)',
+                      backdropFilter: 'blur(8px)',
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     >
                       <polyline points={dir === -1 ? '15 18 9 12 15 6' : '9 18 15 12 9 6'}/>
                     </svg>
