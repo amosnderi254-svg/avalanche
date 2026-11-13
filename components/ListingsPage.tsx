@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ListingCard from './ListingCard';
+import EmptyState from './EmptyState';
 import type { Listing } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -748,172 +749,43 @@ export default function ListingsPage() {
 
         {/* ============ EMPTY STATE ============ */}
         {!loading && listings.length === 0 && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            padding: '60px 24px 48px',
-            maxWidth: 480,
-            margin: '0 auto',
-          }}>
-            {/* Large icon */}
-            <div style={{
-              width: 88, height: 88,
-              borderRadius: 24,
-              background: 'linear-gradient(135deg, #FFF0E6 0%, #FFE4CC 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: 24,
-              boxShadow: '0 4px 20px rgba(240,120,40,.12)',
-            }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-                stroke="var(--orange,#F07828)" strokeWidth="1.5"
-                strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d={emptyContent.icon}/>
-              </svg>
-            </div>
-
-            <h3 style={{
-              font: '800 22px/1.2 Outfit,sans-serif',
-              color: 'var(--text-1)',
-              margin: '0 0 10px',
-              letterSpacing: '-.02em',
-            }}>
-              {emptyContent.headline}
-            </h3>
-
-            <p style={{
-              font: '400 15px/1.6 Outfit,sans-serif',
-              color: 'var(--text-3)',
-              margin: '0 0 32px',
-              maxWidth: 360,
-            }}>
-              {emptyContent.sub}
-            </p>
-
-            {/* Primary CTA: explore other categories */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 320 }}>
-              <button
-                onClick={() => router.push('/', { scroll: false })}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  height: 48,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'var(--orange,#F07828)',
-                  color: '#fff',
-                  font: '700 15px Outfit,sans-serif',
-                  cursor: 'pointer',
-                  letterSpacing: '.01em',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                </svg>
-                Browse all categories
-              </button>
-
-              {/* Secondary CTA: sell yours */}
-              <Link
-                href="/sell"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  height: 48,
-                  borderRadius: 12,
-                  border: '1.5px solid var(--orange,#F07828)',
-                  background: '#fff',
-                  color: 'var(--orange,#F07828)',
-                  font: '600 15px Outfit,sans-serif',
-                  textDecoration: 'none',
-                  letterSpacing: '.01em',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                {emptyContent.cta} - KSh 99
-              </Link>
-
-              {/* Tertiary CTA: share with a friend */}
-              <a
-                href={whatsappShareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  height: 44,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-3)',
-                  font: '500 14px Outfit,sans-serif',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                </svg>
-                Tell a Nairobi parent about this
-              </a>
-            </div>
-
-            {/* Other category suggestions */}
-            {category !== 'all' && (
-              <div style={{ marginTop: 40, width: '100%' }}>
-                <p style={{
-                  font: '500 12px Outfit,sans-serif',
-                  color: 'var(--text-3)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '.08em',
-                  margin: '0 0 12px',
-                }}>
-                  Try these categories
-                </p>
-                <div style={{
-                  display: 'flex',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                }}>
-                  {CATEGORIES.filter(c => c.id !== 'all' && c.id !== category).slice(0, 5).map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => pushFilters({ cat: cat.id, q: '' })}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        height: 34, padding: '0 12px',
-                        borderRadius: 999,
-                        border: '1.5px solid var(--border)',
-                        background: '#fff',
-                        color: 'var(--text-2)',
-                        font: '500 13px Outfit,sans-serif',
-                        cursor: 'pointer',
-                        transition: 'all .15s',
-                      }}
-                      className="cat-suggestion"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                        stroke="var(--orange,#F07828)" strokeWidth="1.75" strokeLinecap="round"
-                      >
-                        <path d={cat.icon}/>
-                      </svg>
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div style={{ maxWidth: 480, margin: '0 auto' }}>
+            <EmptyState
+              iconPath={emptyContent.icon}
+              headline={emptyContent.headline}
+              body={emptyContent.sub}
+              compact
+              actions={[
+                {
+                  label: 'Browse all categories',
+                  variant: 'primary',
+                  onClick: () => router.push('/', { scroll: false }),
+                },
+                {
+                  label: `${emptyContent.cta} - KSh 99`,
+                  variant: 'secondary',
+                  href: '/sell',
+                },
+                {
+                  label: 'Share with a Nairobi parent',
+                  variant: 'ghost',
+                  whatsapp: true,
+                  externalHref: whatsappShareUrl,
+                },
+              ]}
+              chips={category !== 'all'
+                ? CATEGORIES
+                    .filter(c => c.id !== 'all' && c.id !== category)
+                    .slice(0, 5)
+                    .map(cat => ({
+                      label: cat.label,
+                      iconPath: cat.icon,
+                      onClick: () => pushFilters({ cat: cat.id, q: '' }),
+                    }))
+                : undefined
+              }
+              chipsLabel="Try these categories"
+            />
           </div>
         )}
 
