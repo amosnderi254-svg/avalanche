@@ -1,127 +1,142 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
-import { v4 as uuidv4 } from 'uuid';
+import { createAdminClient } from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
 
 const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
 
-function checkAuth(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin');
+function auth(req: NextRequest) {
+  const pin =
+    req.headers.get('x-admin-pin') ||
+    req.headers.get('authorization')?.replace('Bearer ', '');
   return pin === ADMIN_PIN;
 }
 
-// POST /api/admin/create-listing
-// Admin posts a listing on behalf of a parent.
-// - No M-Pesa gate: fee_amount=0, fee_tier='admin'
-// - Status: 'live' immediately
-// - Photos uploaded to Supabase storage same as /api/upload
-// - expires_at: 60 days from now
+// -- GET: list articles
+// Admin: all statuses. Public (no pin): published only.
+export async function GET(req: NextRequest) {
+  const isAdmin = auth(req);
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status');
+
+  const supabase = createAdminClient();
+  let query = supabase
+    .from('articles')
+    .select('id, title, slug, excerpt, status, tags, views, reading_time_minutes, author, published_at, created_at')
+    .order('published_at', { ascending: false });
+
+  if (isAdmin) {
+    if (status) query = query.eq('status', status);
+  } else {
+    query = query.eq('status', 'published');
+  }
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ articles: data || [] });
+}
+
+// -- POST: create article (admin only)
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const {
+    title, slug, excerpt, content, cover_image_url,
+    meta_title, meta_description, tags, reading_time_minutes, author, status,
+  } = body;
+
+  if (!title || !slug) {
+    return NextResponse.json({ error: 'title and slug are required' }, { status: 400 });
   }
 
-  try {
-    const formData = await req.formData();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('articles')
+    .insert({
+      title,
+      slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'),
+      excerpt: excerpt || null,
+      content: content || null,
+      cover_image_url: cover_image_url || null,
+      meta_title: meta_title || title,
+      meta_description: meta_description || excerpt || null,
+      tags: tags || [],
+      status: status === 'published' ? 'published' : 'draft',
+      published_at: status === 'published' ? new Date().toISOString() : null,
+      reading_time_minutes: reading_time_minutes || 5,
+      author: author || 'MyTinyverse Team',
+    })
+    .select()
+    .single();
 
-    // ── Fields ─────────────────────────────────────────────────────────────
-    const title        = (formData.get('title') as string | null)?.trim();
-    const price        = formData.get('price') as string | null;
-    const is_donation  = formData.get('is_donation') === 'true';
-    const category     = (formData.get('category') as string | null)?.trim();
-    const age_range    = (formData.get('age_range') as string | null)?.trim() || null;
-    const condition    = (formData.get('condition') as string | null)?.trim();
-    const description  = (formData.get('description') as string | null)?.trim() || null;
-    const location     = (formData.get('location') as string | null)?.trim();
-    const seller_name  = (formData.get('seller_name') as string | null)?.trim();
-    const seller_phone = (formData.get('seller_phone') as string | null)?.trim();
-    const seller_wa_raw = (formData.get('seller_whatsapp') as string | null)?.trim();
-    const seller_whatsapp = seller_wa_raw || seller_phone || null;
-    const admin_note   = (formData.get('admin_note') as string | null)?.trim() || null;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ article: data }, { status: 201 });
+}
 
-    // ── Validation ─────────────────────────────────────────────────────────
-    if (!title || !category || !condition || !location || !seller_name || !seller_phone) {
-      return NextResponse.json(
-        { error: 'Missing required fields: title, category, condition, location, seller_name, seller_phone' },
-        { status: 400 },
-      );
-    }
+// -- PATCH: update article
+export async function PATCH(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // ── Photo uploads ───────────────────────────────────────────────────────
-    const supabase = createServerClient();
-    const imageUrls: string[] = [];
+  const body = await req.json();
+  const { id, action, ...fields } = body;
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-    for (let i = 0; i < 3; i++) {
-      const file = formData.get(`photo${i}`) as File | null;
-      if (!file) continue;
+  const supabase = createAdminClient();
 
-      if (!file.type.startsWith('image/')) continue;
-      if (file.size > 5 * 1024 * 1024) continue; // skip files > 5MB
-
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const filename = `admin-${uuidv4()}.${ext}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      const { error: uploadError } = await supabase.storage
-        .from('listing-images')
-        .upload(filename, buffer, { contentType: file.type, upsert: false });
-
-      if (uploadError) {
-        console.error('Photo upload error:', uploadError.message);
-        continue; // skip bad uploads, don't fail the whole request
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('listing-images')
-        .getPublicUrl(filename);
-
-      imageUrls.push(urlData.publicUrl);
-    }
-
-    // ── Insert listing ──────────────────────────────────────────────────────
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 60);
-
-    const { data, error } = await supabase
-      .from('listings')
-      .insert({
-        title,
-        price: is_donation ? 0 : Math.max(0, Number(price) || 0),
-        category,
-        condition,
-        description: description || null,
-        location,
-        seller_name,
-        seller_phone,
-        seller_whatsapp,
-        seller_email: null,
-        images: imageUrls,
-        status: 'live',
-        fee_tier: 'admin',
-        fee_amount: 0,
-        mpesa_code: null,
-        expires_at: expiresAt.toISOString(),
-        // Store age_range and admin_note in description prefix if set
-        // (schema doesn't have dedicated columns - embed in description)
-      })
-      .select('id, title, status')
-      .single();
-
-    if (error) throw error;
-
-    // ── Admin note: append to Supabase notes or just log ───────────────────
-    // Store admin_note + age_range in a separate admin_notes table if it exists,
-    // otherwise just log it (non-blocking, best-effort).
-    if (admin_note || age_range) {
-      void supabase
-        .from('admin_listing_notes')
-        .insert({ listing_id: data.id, note: admin_note || null, age_range: age_range || null })
-        .then(() => { /* fire-and-forget, table may not exist */ })
-        .catch(() => { /* silent */ });
-    }
-
-    return NextResponse.json({ listing: { id: data.id, title: data.title } }, { status: 201 });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to create listing';
-    return NextResponse.json({ error: message }, { status: 500 });
+  if (action === 'publish') {
+    const { error } = await supabase
+      .from('articles')
+      .update({ status: 'published', published_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, status: 'published' });
   }
+
+  if (action === 'unpublish') {
+    const { error } = await supabase
+      .from('articles')
+      .update({ status: 'draft', published_at: null })
+      .eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, status: 'draft' });
+  }
+
+  const allowed = [
+    'title', 'slug', 'excerpt', 'content', 'cover_image_url',
+    'meta_title', 'meta_description', 'tags', 'reading_time_minutes', 'author',
+  ];
+  const updates: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in fields) updates[k] = fields[k];
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('articles')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ article: data });
+}
+
+// -- DELETE: delete article
+export async function DELETE(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('articles').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

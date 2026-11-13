@@ -1,13 +1,14 @@
 import { MetadataRoute } from 'next';
 import { createServerClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createServerClient();
   const now = new Date().toISOString();
 
-  // Fetch all live, non-expired listings
   const { data: listings } = await supabase
     .from('listings')
     .select('id, updated_at')
@@ -22,7 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // Fetch all published articles for the blog sitemap
   const { data: articles } = await supabase
     .from('articles')
     .select('slug, updated_at, published_at')
@@ -37,36 +37,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   return [
-    {
-      url: APP_URL,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 1.0,
-    },
-    {
-      url: `${APP_URL}/blog`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${APP_URL}/sell`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: `${APP_URL}/terms`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.2,
-    },
-    {
-      url: `${APP_URL}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.2,
-    },
+    { url: APP_URL, lastModified: new Date(), changeFrequency: 'hourly', priority: 1.0 },
+    { url: `${APP_URL}/blog`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
+    { url: `${APP_URL}/sell`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${APP_URL}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${APP_URL}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
     ...listingUrls,
     ...articleUrls,
   ];

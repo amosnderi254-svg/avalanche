@@ -1,25 +1,33 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Server-side Supabase instance (bypasses RLS -- admin only)
-export const supabaseAdmin = createClient(url, serviceKey, {
-  auth: { persistSession: false },
-});
+// IMPORTANT: Do NOT create any Supabase client at module level.
+// Module-level createClient() runs during Next.js build analysis even
+// with force-dynamic, and throws when env vars are undefined at build time.
+// All client creation must be inside functions so it only runs at request time.
 
 // Named factory for use in Server Components and API routes
-// Returns a fresh client each call (safe for concurrent requests)
 export function createServerClient() {
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false },
-  });
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
 }
 
-// Alias used by some routes -- identical to createServerClient
-// (service role already bypasses RLS, no separate "admin" auth needed)
+// Alias used by admin routes -- service role already bypasses RLS
 export function createAdminClient() {
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false },
-  });
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
+
+// Use this instead of importing supabaseAdmin directly
+export function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
 }

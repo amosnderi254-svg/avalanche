@@ -4,6 +4,7 @@ import NayaChat from '@/components/NayaChat';
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase-server';
 import { CONDITION_LABELS } from '@/lib/constants';
+export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 
 interface Props {

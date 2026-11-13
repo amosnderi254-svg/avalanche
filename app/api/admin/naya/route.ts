@@ -1,127 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
-import { v4 as uuidv4 } from 'uuid';
+import Anthropic from '@anthropic-ai/sdk';
+
+export const dynamic = 'force-dynamic';
+
 
 const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
 
-function checkAuth(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin');
+function auth(req: NextRequest) {
+  const pin =
+    req.headers.get('x-admin-pin') ||
+    req.headers.get('authorization')?.replace('Bearer ', '');
   return pin === ADMIN_PIN;
 }
 
-// POST /api/admin/create-listing
-// Admin posts a listing on behalf of a parent.
-// - No M-Pesa gate: fee_amount=0, fee_tier='admin'
-// - Status: 'live' immediately
-// - Photos uploaded to Supabase storage same as /api/upload
-// - expires_at: 60 days from now
+const SYSTEM_PROMPT = `You are Naya, the MyTinyverse admin assistant. MyTinyverse is Nairobi's leading parent-to-parent marketplace for gently used kids' gear - bikes, strollers, toys, books, car seats, baby gear, shoes, playpens and more.
+
+You help the admin (Amos) manage the marketplace. You can:
+- Answer questions about listings, sellers, and marketplace trends
+- Suggest pricing guidance for second-hand kids' items in Nairobi
+- Help draft seller communications and responses
+- Give category insights and demand analysis
+- Advise on moderation decisions
+
+Keep responses concise and practical. You know the Nairobi market well.`;
+
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
+
+  const body = await req.json();
+  const { message, history = [] } = body;
+
+  if (!message) return NextResponse.json({ error: 'message is required' }, { status: 400 });
 
   try {
-    const formData = await req.formData();
+    const anthropic = new Anthropic({ apiKey });
 
-    // ── Fields ─────────────────────────────────────────────────────────────
-    const title        = (formData.get('title') as string | null)?.trim();
-    const price        = formData.get('price') as string | null;
-    const is_donation  = formData.get('is_donation') === 'true';
-    const category     = (formData.get('category') as string | null)?.trim();
-    const age_range    = (formData.get('age_range') as string | null)?.trim() || null;
-    const condition    = (formData.get('condition') as string | null)?.trim();
-    const description  = (formData.get('description') as string | null)?.trim() || null;
-    const location     = (formData.get('location') as string | null)?.trim();
-    const seller_name  = (formData.get('seller_name') as string | null)?.trim();
-    const seller_phone = (formData.get('seller_phone') as string | null)?.trim();
-    const seller_wa_raw = (formData.get('seller_whatsapp') as string | null)?.trim();
-    const seller_whatsapp = seller_wa_raw || seller_phone || null;
-    const admin_note   = (formData.get('admin_note') as string | null)?.trim() || null;
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+      ...history.slice(-10), // keep last 10 messages for context
+      { role: 'user', content: message },
+    ];
 
-    // ── Validation ─────────────────────────────────────────────────────────
-    if (!title || !category || !condition || !location || !seller_name || !seller_phone) {
-      return NextResponse.json(
-        { error: 'Missing required fields: title, category, condition, location, seller_name, seller_phone' },
-        { status: 400 },
-      );
-    }
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages,
+    });
 
-    // ── Photo uploads ───────────────────────────────────────────────────────
-    const supabase = createServerClient();
-    const imageUrls: string[] = [];
+    const reply = response.content[0].type === 'text' ? response.content[0].text : '';
 
-    for (let i = 0; i < 3; i++) {
-      const file = formData.get(`photo${i}`) as File | null;
-      if (!file) continue;
-
-      if (!file.type.startsWith('image/')) continue;
-      if (file.size > 5 * 1024 * 1024) continue; // skip files > 5MB
-
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const filename = `admin-${uuidv4()}.${ext}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      const { error: uploadError } = await supabase.storage
-        .from('listing-images')
-        .upload(filename, buffer, { contentType: file.type, upsert: false });
-
-      if (uploadError) {
-        console.error('Photo upload error:', uploadError.message);
-        continue; // skip bad uploads, don't fail the whole request
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('listing-images')
-        .getPublicUrl(filename);
-
-      imageUrls.push(urlData.publicUrl);
-    }
-
-    // ── Insert listing ──────────────────────────────────────────────────────
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 60);
-
-    const { data, error } = await supabase
-      .from('listings')
-      .insert({
-        title,
-        price: is_donation ? 0 : Math.max(0, Number(price) || 0),
-        category,
-        condition,
-        description: description || null,
-        location,
-        seller_name,
-        seller_phone,
-        seller_whatsapp,
-        seller_email: null,
-        images: imageUrls,
-        status: 'live',
-        fee_tier: 'admin',
-        fee_amount: 0,
-        mpesa_code: null,
-        expires_at: expiresAt.toISOString(),
-        // Store age_range and admin_note in description prefix if set
-        // (schema doesn't have dedicated columns - embed in description)
-      })
-      .select('id, title, status')
-      .single();
-
-    if (error) throw error;
-
-    // ── Admin note: append to Supabase notes or just log ───────────────────
-    // Store admin_note + age_range in a separate admin_notes table if it exists,
-    // otherwise just log it (non-blocking, best-effort).
-    if (admin_note || age_range) {
-      void supabase
-        .from('admin_listing_notes')
-        .insert({ listing_id: data.id, note: admin_note || null, age_range: age_range || null })
-        .then(() => { /* fire-and-forget, table may not exist */ })
-        .catch(() => { /* silent */ });
-    }
-
-    return NextResponse.json({ listing: { id: data.id, title: data.title } }, { status: 201 });
+    return NextResponse.json({ reply });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to create listing';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

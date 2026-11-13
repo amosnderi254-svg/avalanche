@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 
+export const dynamic = 'force-dynamic';
+
+
 const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
 
 function checkAuth(req: NextRequest) {
@@ -112,11 +115,13 @@ export async function POST(req: NextRequest) {
     // Store admin_note + age_range in a separate admin_notes table if it exists,
     // otherwise just log it (non-blocking, best-effort).
     if (admin_note || age_range) {
-      void supabase
-        .from('admin_listing_notes')
-        .insert({ listing_id: data.id, note: admin_note || null, age_range: age_range || null })
-        .then(() => { /* fire-and-forget, table may not exist */ })
-        .catch(() => { /* silent */ });
+      void (async () => {
+        try {
+          await supabase
+            .from('admin_listing_notes')
+            .insert({ listing_id: data.id, note: admin_note || null, age_range: age_range || null });
+        } catch (_) { /* silent - table may not exist */ }
+      })();
     }
 
     return NextResponse.json({ listing: { id: data.id, title: data.title } }, { status: 201 });

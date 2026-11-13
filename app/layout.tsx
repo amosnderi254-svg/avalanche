@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+// Force the entire app to render dynamically (server-side on each request).
+// This prevents Next.js from trying to statically pre-render pages at build
+// time when Supabase credentials are not available.
+export const dynamic = 'force-dynamic';
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
 
 export const metadata: Metadata = {
