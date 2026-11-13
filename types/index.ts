@@ -51,6 +51,21 @@ export interface MpesaSTKResponse {
   error?: string;
 }
 
+// ── Seller Profiles ───────────────────────────────────────
+export interface SellerProfile {
+  id: string;
+  phone: string;           // normalized: 254XXXXXXXXX
+  display_name: string;
+  bio: string | null;
+  neighbourhood: string | null;
+  avatar_url: string | null;
+  profile_slug: string;
+  total_sold: number;
+  edit_token?: string;     // returned only to the owner after create
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Blog Articles ─────────────────────────────────────────
 export type ArticleStatus = 'draft' | 'pending' | 'published';
 

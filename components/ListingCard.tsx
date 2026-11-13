@@ -122,6 +122,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {listing.location}
         </p>
 
+        {/* Seller name links to profile */}
+        <Link
+          href={`/sellers/${listing.seller_phone.replace(/^0/, '254').replace(/\D/g, '')}`}
+          style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: -2 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          {listing.seller_name}
+        </Link>
+
         {/* CTA */}
         <a
           href={`https://wa.me/${whatsappNum.replace(/\D/g, '')}?text=${waMessage}`}

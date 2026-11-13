@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerClient, createAdminClient } from '@/lib/supabase-server';
 
 // GET /api/listings?category=bikes&q=trek&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -122,6 +122,58 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Auto-create seller profile using admin client (fire-and-forget -- non-blocking)
+    void (async () => {
+      try {
+        const rawPhone = (data.seller_phone || '').trim();
+        const digits   = rawPhone.replace(/\D/g, '');
+        const phone    = digits.startsWith('254') ? digits : digits.startsWith('0') ? '254' + digits.slice(1) : digits;
+        const name     = (data.seller_name || '').trim();
+        const hood     = (data.location || '').split(',')[0].trim().slice(0, 40) || 'Nairobi';
+
+        if (!phone || !name) return;
+
+        const admin = createAdminClient();
+
+        // Skip if profile already exists for this phone
+        const { data: existing } = await admin
+          .from('seller_profiles')
+          .select('id, profile_slug')
+          .eq('phone', phone)
+          .single();
+
+        if (existing) return; // already has a profile
+
+        // Build slug: name-neighbourhood
+        const slugBase = `${name}-${hood}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 60) || `seller-${Math.random().toString(36).slice(2,8)}`;
+
+        // Ensure uniqueness
+        let slug = slugBase;
+        const { data: taken } = await admin
+          .from('seller_profiles')
+          .select('id')
+          .eq('profile_slug', slug)
+          .single();
+        if (taken) slug = `${slugBase}-${Math.random().toString(16).slice(2, 6)}`;
+
+        await admin.from('seller_profiles').insert({
+          phone,
+          display_name: name,
+          neighbourhood: hood,
+          profile_slug: slug,
+        });
+      } catch (profileErr) {
+        // Non-critical -- log and continue
+        console.error('[seller-profile] auto-create failed:', profileErr);
+      }
+    })();
 
     // Feature 1: Notify admin via ntfy.sh (fire-and-forget, never block the response)
     const notifyChannel = process.env.ADMIN_NOTIFY_CHANNEL;

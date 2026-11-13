@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerClient, createAdminClient } from '@/lib/supabase-server';
 
 const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
 
@@ -87,10 +87,27 @@ export async function PATCH(req: NextRequest) {
       const sellerPhone = rawPhone.startsWith('0') ? '254' + rawPhone.slice(1) : rawPhone;
       const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
 
+      // Fetch seller's profile edit token so we can include the profile link
+      let profileEditLine = '';
+      try {
+        const rawPhone = (data.seller_phone || '').replace(/\D/g, '');
+        const sellerPhone254 = rawPhone.startsWith('254') ? rawPhone : rawPhone.startsWith('0') ? '254' + rawPhone.slice(1) : rawPhone;
+        const admin = createAdminClient();
+        const { data: sp } = await admin
+          .from('seller_profiles')
+          .select('profile_slug, edit_token')
+          .eq('phone', sellerPhone254)
+          .single();
+        if (sp?.edit_token) {
+          profileEditLine = `\nSet up your seller profile: ${appUrl}/account/profile?token=${sp.edit_token}`;
+        }
+      } catch { /* non-critical */ }
+
       const waBody =
         `Hi ${data.seller_name}, your listing "${data.title}" is now LIVE on MyTinyverse!\n\n` +
         `Share it with potential buyers: ${appUrl}/listing/${id}\n\n` +
-        `Buyers will contact you directly on WhatsApp. Keep your phone nearby.`;
+        `Buyers will contact you directly on WhatsApp. Keep your phone nearby.` +
+        profileEditLine;
 
       const params = new URLSearchParams({
         To:   `whatsapp:+${sellerPhone}`,
