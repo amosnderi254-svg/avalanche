@@ -9,19 +9,23 @@ function checkAuth(req: NextRequest) {
   return pin === ADMIN_PIN;
 }
 
-// GET /api/admin/listings?status=pending
+// GET /api/admin/listings?status=live&limit=50
+// Defaults to 'live' (auto-approve model: listings are live on submit).
+// Pass status=rejected to see removed listings.
 export async function GET(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') || 'pending';
+  const status = searchParams.get('status') || 'live';
+  const limit  = Math.min(100, parseInt(searchParams.get('limit') || '50'));
 
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('listings')
     .select('*')
     .eq('status', status)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ listings: data });

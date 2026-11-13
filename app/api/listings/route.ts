@@ -88,9 +88,14 @@ export async function POST(req: NextRequest) {
     const {
       title, price, category, condition, description, location,
       seller_name, seller_phone, seller_whatsapp, seller_email,
-      images = [], status = 'pending',
+      images = [],
       fee_tier, fee_amount, mpesa_code,
     } = body;
+
+    // Auto-approve: listings go live immediately so sellers never wait.
+    // Admin reviews the live feed and removes anything problematic.
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 60);
 
     // Basic validation
     if (!title || !category || !condition || !location || !seller_name || !seller_phone) {
@@ -112,11 +117,12 @@ export async function POST(req: NextRequest) {
         seller_whatsapp: seller_whatsapp?.trim() || null,
         seller_email: seller_email?.trim() || null,
         images: Array.isArray(images) ? images : [],
-        status,
+        status: 'live',
         fee_tier: fee_tier || null,
         fee_amount: Number(fee_amount) || 0,
         mpesa_code: mpesa_code || null,
-        // edit_token and expires_at are set by DB defaults
+        expires_at: expiresAt.toISOString(),
+        // edit_token is set by DB default
       })
       .select()
       .single();
@@ -183,14 +189,64 @@ export async function POST(req: NextRequest) {
       fetch(`https://ntfy.sh/${notifyChannel}`, {
         method: 'POST',
         headers: {
-          'Title': 'New listing submitted',
-          'Priority': 'default',
-          'Tags': 'package',
+          'Title': 'New listing is LIVE',
+          'Priority': 'high',
+          'Tags': 'white_check_mark',
           'Content-Type': 'text/plain',
+          'Actions': `view, View listing, ${process.env.NEXT_PUBLIC_APP_URL}/listing/${data.id}; view, Admin, ${process.env.NEXT_PUBLIC_APP_URL}/admin`,
         },
-        body: `${data.title} -- ${priceLabel}${feeLabel}\nSeller: ${data.seller_name} (${data.seller_phone})\nLocation: ${data.location}\nReview: ${process.env.NEXT_PUBLIC_APP_URL}/admin`,
+        body: `${data.title} -- ${priceLabel}${feeLabel}\nSeller: ${data.seller_name} (${data.seller_phone})\nLocation: ${data.location}`,
       }).catch(() => { /* silent fail -- notification is best-effort */ });
     }
+
+    // Feature 2: WhatsApp seller confirmation (listing is live immediately)
+    void (async () => {
+      try {
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken  = process.env.TWILIO_AUTH_TOKEN;
+        const fromNumber = process.env.TWILIO_WHATSAPP_FROM;
+        if (!accountSid || !authToken || !fromNumber) return;
+
+        const rawPhone    = (data.seller_whatsapp || data.seller_phone || '').replace(/\s+/g, '').replace(/\D/g, '');
+        const sellerPhone = rawPhone.startsWith('254') ? rawPhone : rawPhone.startsWith('0') ? '254' + rawPhone.slice(1) : rawPhone;
+        const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
+
+        // Fetch edit token for profile setup link
+        let profileEditLine = '';
+        try {
+          const admin = createAdminClient();
+          const { data: sp } = await admin
+            .from('seller_profiles')
+            .select('profile_slug, edit_token')
+            .eq('phone', sellerPhone)
+            .single();
+          if (sp?.edit_token) {
+            profileEditLine = `\nSet up your seller profile: ${appUrl}/account/profile?token=${sp.edit_token}`;
+          }
+        } catch { /* non-critical */ }
+
+        const waBody =
+          `Hi ${data.seller_name}, your listing "${data.title}" is now LIVE on MyTinyverse!\n\n` +
+          `Share it with buyers: ${appUrl}/listing/${data.id}\n\n` +
+          `Buyers will contact you directly on WhatsApp. Keep your phone nearby.` +
+          profileEditLine;
+
+        const params = new URLSearchParams({
+          To: `whatsapp:+${sellerPhone}`,
+          From: fromNumber,
+          Body: waBody,
+        });
+
+        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+          },
+          body: params.toString(),
+        });
+      } catch { /* non-critical */ }
+    })();
 
     return NextResponse.json(data, { status: 201 });
   } catch (err: unknown) {

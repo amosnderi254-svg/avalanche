@@ -20,12 +20,12 @@ export async function GET(
     .select('*')
     .eq('id', params.id)
     .eq('edit_token', token)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'live'])
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: 'Listing not found, token invalid, or listing already reviewed' },
+      { error: 'Listing not found or token invalid' },
       { status: 404 }
     );
   }
@@ -73,14 +73,14 @@ export async function PATCH(
     .from('listings')
     .update(updates)
     .eq('id', params.id)
-    .eq('edit_token', token)   // must present correct token
-    .eq('status', 'pending')   // can only edit while still pending
+    .eq('edit_token', token)              // must present correct token
+    .in('status', ['pending', 'live'])    // can edit pending or live listings
     .select()
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: 'Listing not found, token invalid, or listing already reviewed' },
+      { error: 'Listing not found or token invalid' },
       { status: 404 }
     );
   }
