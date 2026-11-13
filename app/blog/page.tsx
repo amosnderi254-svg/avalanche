@@ -85,8 +85,34 @@ export default async function BlogPage() {
   // Collect all unique tags for filter bar
   const allTags = Array.from(new Set(articles.flatMap(a => a.tags || []))).sort();
 
+  const blogJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'MyTinyverse Blog',
+    description: 'Parenting tips, buying guides and safety advice for Nairobi parents.',
+    url: `${APP_URL}/blog`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'MyTinyverse',
+      url: APP_URL,
+      logo: { '@type': 'ImageObject', url: `${APP_URL}/logo.png` },
+    },
+    ...(articles.length > 0 ? {
+      blogPost: articles.slice(0, 10).map(a => ({
+        '@type': 'BlogPosting',
+        headline: a.title,
+        url: `${APP_URL}/blog/${a.slug}`,
+        datePublished: a.published_at || a.created_at,
+        description: a.excerpt || '',
+        author: { '@type': 'Organization', name: a.author || 'MyTinyverse Team' },
+      })),
+    } : {}),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }} />
+
       {/* CSS hover effects -- Server Component cannot use onMouseEnter/onMouseLeave */}
       <style>{`
         .blog-card-hover:hover {

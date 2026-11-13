@@ -65,6 +65,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 .btn-green     { background: var(--green); color: #fff; }
 .btn-green:hover { filter: brightness(.92); }
 .btn-ghost     { background: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: rgba(0,0,0,.04); }
 .btn:disabled  { opacity: .45; pointer-events: none; }
 .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
 .btn-lg { height: 52px; padding: 0 28px; font-size: 16px; }
@@ -132,6 +133,13 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 }
 .field textarea { resize: vertical; min-height: 88px; }
 .field .hint { font: 400 12px 'Outfit', sans-serif; color: var(--text-3); }
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: .55;
+  background: #f2f2f0;
+  cursor: not-allowed;
+}
 
 /* ── Page layout ──────────────────────────────────────── */
 .container {
@@ -204,6 +212,20 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 @media (max-width: 640px) {
   .hide-mobile { display: none !important; }
   .show-mobile { display: block !important; }
+  .container { padding: 0 16px; }
+  /* Buttons: comfortable touch targets on mobile */
+  .btn-lg { height: 46px !important; padding: 0 20px !important; font-size: 14px !important; }
+  .btn-primary, .btn-secondary { min-width: unset !important; }
+  /* Listing grid: 2 columns on mobile */
+  .listings-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+  /* Section headings: scale down */
+  h2 { font-size: clamp(20px, 5vw, 28px) !important; }
+  /* Stat bar: wrap nicely */
+  .stat-bar { flex-wrap: wrap; gap: 16px !important; }
+}
+@media (max-width: 400px) {
+  /* Single column on very small phones (old budget androids) */
+  .listings-grid { grid-template-columns: 1fr !important; }
 }
 @media (min-width: 641px) {
   .hide-desktop { display: none !important; }

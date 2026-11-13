@@ -8,6 +8,14 @@ import NayaChat from '@/components/NayaChat';
 import ListingsPage from '@/components/ListingsPage';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
+export const metadata = {
+  title: "Buy & Sell Kids' Gear in Nairobi | MyTinyverse",
+  description: "Find gently used bikes, strollers, car seats, toys and books from Nairobi parents. Save up to 70% on quality kids' gear. Cash on handover, no middleman.",
+  keywords: "kids marketplace Nairobi, second hand children items Kenya, buy sell kids gear, gently used baby items Nairobi, second hand strollers Kenya, used bikes for kids Nairobi",
+};
+
 /* ── Trending categories ─────────────────────────────────────── */
 const TRENDING = [
   { slug: 'bikes',    label: 'Bikes',       count: 24, icon: 'M12 2a10 10 0 100 20A10 10 0 0012 2zm0 0' },
@@ -111,9 +119,42 @@ const EARN_ITEMS = [
   { label: 'Kids clothes (5)', range: 'KES 600 to 2,000',    icon: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z' },
 ];
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
+
+const homeJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${APP_URL}/#website`,
+      url: APP_URL,
+      name: 'MyTinyverse',
+      description: 'Buy, sell or donate gently used kids items in Nairobi - bikes, strollers, car seats, toys, books and more.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: `${APP_URL}/?q={search_term_string}` },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${APP_URL}/#organization`,
+      name: 'MyTinyverse',
+      url: APP_URL,
+      logo: { '@type': 'ImageObject', url: `${APP_URL}/logo.png` },
+      contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', availableLanguage: 'English' },
+      areaServed: { '@type': 'City', name: 'Nairobi', '@id': 'https://www.wikidata.org/wiki/Q3870' },
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
       {/* 1. Navigation */}
       <Nav/>
 

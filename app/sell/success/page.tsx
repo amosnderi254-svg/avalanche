@@ -4,6 +4,8 @@ import { Suspense } from 'react';
 import Nav from '@/components/Nav';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 function SuccessContent() {
   const params = useSearchParams();
   const ref = params.get('ref') ?? 'MTV00000';
@@ -56,6 +58,37 @@ function SuccessContent() {
               Share on WhatsApp
             </span>
           </a>
+        </div>
+
+        {/* Referral teaser */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 24, textAlign: 'left', background: '#f0fbe8', border: '1px solid #bbf7d0' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div>
+              <p style={{ font: '700 14px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 4px' }}>
+                Refer a friend - earn KES 200
+              </p>
+              <p style={{ font: '400 13px/1.5 Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 12px' }}>
+                Know another parent with kids gear to sell? Send them your referral link and earn KES 200 when they list their first item.
+              </p>
+              <a
+                href="https://wa.me/254790784084?text=Hi%20MyTinyverse%2C%20I%20want%20to%20join%20the%20referral%20program%20and%20get%20my%20referral%20link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ font: '600 13px Outfit,sans-serif', color: 'var(--green)', textDecoration: 'none' }}
+              >
+                Get my referral link on WhatsApp
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle' }} aria-hidden="true">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
