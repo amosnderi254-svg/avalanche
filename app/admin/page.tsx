@@ -56,7 +56,7 @@ interface StatsData {
   demand_gaps: { query: string; count: number }[];
 }
 
-type AdminView   = 'home' | 'queue' | 'post' | 'market' | 'blog';
+type AdminView   = 'home' | 'queue' | 'post' | 'market' | 'blog' | 'shops';
 type ModTab      = 'pending' | 'live' | 'rejected';
 type BlogEdMode  = 'generate' | 'manual';
 
@@ -107,6 +107,7 @@ const NAV_ITEMS: { id: AdminView; label: string; icon: string }[] = [
   { id: 'post',   label: 'Post',    icon: 'M12 5v14M5 12h14' },
   { id: 'market', label: 'Market',  icon: 'M18 20V10M12 20V4M6 20v-6' },
   { id: 'blog',   label: 'Blog',    icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+  { id: 'shops',  label: 'Shops',   icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2zM9 22V12h6v10' },
 ];
 
 // ── Pin Screen ────────────────────────────────────────────────────────────────
@@ -287,6 +288,17 @@ export default function AdminPage() {
   // Market sub-tab
   const [marketTab, setMarketTab] = useState<'categories'|'searches'|'revenue'|'expiring'>('categories');
 
+  // Shops
+  interface ShopRow { id: string; phone: string; display_name: string; profile_slug: string; neighbourhood: string | null; shop_name: string | null; shop_bio: string | null; shop_areas: string[]; is_shop: boolean; verified_shop: boolean; subscription_tier: string; subscription_expires_at: string | null; listing_count: number; created_at: string; }
+  const [shops, setShops]               = useState<ShopRow[]>([]);
+  const [shopsLoading, setShopsLoading] = useState(false);
+  const [shopSearch, setShopSearch]     = useState('');
+  const [onboardForm, setOnboardForm]   = useState({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free' });
+  const [onboardLoading, setOnboardLoading] = useState(false);
+  const [onboardMsg, setOnboardMsg]     = useState('');
+  const [editShop, setEditShop]         = useState<ShopRow | null>(null);
+  const [patchLoading, setPatchLoading] = useState(false);
+
   // ── API handlers (unchanged from original) ────────────────────────────────
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -315,6 +327,15 @@ export default function AdminPage() {
     } catch { setBlogArticles([]); } finally { setBlogLoading(false); }
   }, []);
 
+  const fetchShops = useCallback(async () => {
+    setShopsLoading(true);
+    try {
+      const res = await fetch('/api/admin/shops', { headers: { 'x-admin-pin': ADMIN_PIN } });
+      const data = await res.json();
+      setShops(data.shops || []);
+    } catch { setShops([]); } finally { setShopsLoading(false); }
+  }, []);
+
   useEffect(() => {
     if (authed && (view === 'home' || view === 'market')) fetchStats();
   }, [authed, view, fetchStats]);
@@ -326,6 +347,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (authed && view === 'blog' && !editingArticle && !isNewArticle) fetchArticles();
   }, [authed, view, editingArticle, isNewArticle, fetchArticles]);
+
+  useEffect(() => {
+    if (authed && view === 'shops') fetchShops();
+  }, [authed, view, fetchShops]);
 
   async function updateStatus(id: string, status: 'live' | 'rejected') {
     setActionLoading(id + status);
@@ -1233,6 +1258,266 @@ export default function AdminPage() {
   }
 
   // ========================================================================
+  // VIEW: SHOPS (B2B2C shop management)
+  // ========================================================================
+  function renderShops() {
+    const NAIROBI_HOODS_SHOPS = ['Westlands','Kilimani','Karen','Lavington','Runda','Muthaiga','Parklands','Langata','Upperhill','Kileleshwa','Embakasi','Kasarani','Ruaka','Kikuyu','Thika Road','Eastleigh','Rongai','Kitengela'];
+    const TIERS = ['free','starter','pro'];
+    const tierColor = (t: string) => t === 'pro' ? '#7DC243' : t === 'starter' ? '#F07828' : '#8B7355';
+    const tierBg    = (t: string) => t === 'pro' ? '#EDF7E2' : t === 'starter' ? '#FEF3E8' : '#F5F0E8';
+
+    const filtered = shops.filter(s => {
+      const q = shopSearch.toLowerCase();
+      return !q || (s.shop_name || s.display_name).toLowerCase().includes(q) || (s.neighbourhood || '').toLowerCase().includes(q) || s.phone.includes(q);
+    });
+
+    async function handleOnboard(e: React.FormEvent) {
+      e.preventDefault();
+      if (!onboardForm.phone || !onboardForm.shop_name) return;
+      setOnboardLoading(true); setOnboardMsg('');
+      try {
+        const res = await fetch('/api/admin/shops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
+          body: JSON.stringify(onboardForm),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setOnboardMsg(`Shop ${data.action === 'promoted' ? 'promoted' : 'created'} successfully.`);
+          setOnboardForm({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free' });
+          fetchShops();
+        } else {
+          setOnboardMsg(`Error: ${data.error}`);
+        }
+      } catch { setOnboardMsg('Network error.'); } finally { setOnboardLoading(false); }
+    }
+
+    async function handlePatch(id: string, patch: Record<string, unknown>) {
+      setPatchLoading(true);
+      try {
+        const res = await fetch('/api/admin/shops', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
+          body: JSON.stringify({ id, ...patch }),
+        });
+        if (res.ok) { setEditShop(null); fetchShops(); }
+      } finally { setPatchLoading(false); }
+    }
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ font: '700 22px Outfit,sans-serif', color: '#1A1310', margin: '0 0 4px' }}>Shop Management</h1>
+            <p style={{ font: '400 13px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>Onboard and manage B2B2C store profiles</p>
+          </div>
+          <span style={{ background: '#FEF3E8', border: '1.5px solid #F07828', borderRadius: 20, padding: '4px 12px', font: '600 13px Outfit,sans-serif', color: '#F07828' }}>
+            {shops.length} shop{shops.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {/* Onboard new shop */}
+        <div style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 16, padding: '24px', marginBottom: 28 }}>
+          <h2 style={{ font: '700 16px Outfit,sans-serif', color: '#1A1310', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Onboard new shop
+          </h2>
+          <form onSubmit={handleOnboard}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Phone (required)</label>
+                <input
+                  type="text" placeholder="0712345678"
+                  value={onboardForm.phone}
+                  onChange={e => setOnboardForm(f => ({ ...f, phone: e.target.value }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop name (required)</label>
+                <input
+                  type="text" placeholder="e.g. Tiny Treasures Westlands"
+                  value={onboardForm.shop_name}
+                  onChange={e => setOnboardForm(f => ({ ...f, shop_name: e.target.value }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Neighbourhood</label>
+                <select
+                  value={onboardForm.neighbourhood}
+                  onChange={e => setOnboardForm(f => ({ ...f, neighbourhood: e.target.value }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+                >
+                  <option value="">Select area</option>
+                  {NAIROBI_HOODS_SHOPS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Subscription tier</label>
+                <select
+                  value={onboardForm.subscription_tier}
+                  onChange={e => setOnboardForm(f => ({ ...f, subscription_tier: e.target.value }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+                >
+                  {TIERS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop bio</label>
+              <input
+                type="text" placeholder="One-line shop description"
+                value={onboardForm.shop_bio}
+                onChange={e => setOnboardForm(f => ({ ...f, shop_bio: e.target.value }))}
+                style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button type="submit" disabled={onboardLoading}
+                style={{ padding: '8px 20px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
+                {onboardLoading ? 'Onboarding...' : 'Onboard shop'}
+              </button>
+              {onboardMsg && (
+                <span style={{ font: '500 13px Outfit,sans-serif', color: onboardMsg.startsWith('Error') ? '#E53935' : '#7DC243' }}>
+                  {onboardMsg}
+                </span>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', marginBottom: 20 }}>
+          <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8B7355', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            type="search" placeholder="Search shops by name, phone or area..."
+            value={shopSearch}
+            onChange={e => setShopSearch(e.target.value)}
+            style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px 0 36px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {/* Shop list */}
+        {shopsLoading ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355', font: '400 14px Outfit,sans-serif' }}>Loading shops...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355', font: '400 14px Outfit,sans-serif' }}>
+            {shopSearch ? 'No shops matching your search.' : 'No shops onboarded yet.'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map(shop => {
+              const name = shop.shop_name || shop.display_name;
+              const isEditing = editShop?.id === shop.id;
+              return (
+                <div key={shop.id} style={{ background: '#fff', border: `1.5px solid ${isEditing ? '#F07828' : '#EEE9E0'}`, borderRadius: 14, padding: 16, transition: 'border-color .15s' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ font: '700 15px Outfit,sans-serif', color: '#1A1310' }}>{name}</span>
+                        {shop.verified_shop && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#EDF7E2', borderRadius: 20, padding: '2px 8px', font: '600 11px Outfit,sans-serif', color: '#7DC243' }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-.45 3.31 3.745 3.745 0 01-3.312.45 3.745 3.745 0 01-3.068 1.59 3.745 3.745 0 01-3.068-1.59 3.745 3.745 0 01-3.31-.45 3.745 3.745 0 01-.45-3.31A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 01.45-3.31 3.745 3.745 0 013.312-.45 3.745 3.745 0 013.068-1.59 3.745 3.745 0 013.068 1.59 3.745 3.745 0 013.31.45 3.745 3.745 0 01.45 3.31A3.745 3.745 0 0121 12z"/>
+                            </svg>
+                            Verified
+                          </span>
+                        )}
+                        <span style={{ background: tierBg(shop.subscription_tier), borderRadius: 20, padding: '2px 8px', font: '600 11px Outfit,sans-serif', color: tierColor(shop.subscription_tier) }}>
+                          {shop.subscription_tier.charAt(0).toUpperCase() + shop.subscription_tier.slice(1)}
+                        </span>
+                        {shop.listing_count > 0 && (
+                          <span style={{ font: '500 12px Outfit,sans-serif', color: '#7DC243' }}>{shop.listing_count} items</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, font: '400 12px Outfit,sans-serif', color: '#8B7355' }}>
+                        {shop.neighbourhood && <span>{shop.neighbourhood}</span>}
+                        <span>{shop.phone}</span>
+                        <Link href={`/sellers/${shop.profile_slug}`} target="_blank" style={{ color: '#F07828', textDecoration: 'none' }}>View profile</Link>
+                        <a href={`https://wa.me/${shop.phone}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', textDecoration: 'none' }}>WhatsApp</a>
+                      </div>
+                      {shop.shop_bio && <p style={{ font: '400 12px/1.5 Outfit,sans-serif', color: '#666', margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{shop.shop_bio}</p>}
+                    </div>
+                    <button
+                      onClick={() => setEditShop(isEditing ? null : shop)}
+                      style={{ padding: '6px 14px', background: isEditing ? '#F07828' : 'transparent', color: isEditing ? '#fff' : '#8B7355', border: `1.5px solid ${isEditing ? '#F07828' : '#EEE9E0'}`, borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      {isEditing ? 'Cancel' : 'Edit'}
+                    </button>
+                  </div>
+
+                  {/* Edit panel */}
+                  {isEditing && editShop && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #EEE9E0' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                        <div>
+                          <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Shop name</label>
+                          <input type="text" value={editShop.shop_name || ''} onChange={e => setEditShop(s => s ? ({ ...s, shop_name: e.target.value }) : s)}
+                            style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}/>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Neighbourhood</label>
+                          <select value={editShop.neighbourhood || ''} onChange={e => setEditShop(s => s ? ({ ...s, neighbourhood: e.target.value }) : s)}
+                            style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}>
+                            <option value="">Select area</option>
+                            {NAIROBI_HOODS_SHOPS.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Subscription tier</label>
+                          <select value={editShop.subscription_tier} onChange={e => setEditShop(s => s ? ({ ...s, subscription_tier: e.target.value }) : s)}
+                            style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}>
+                            {TIERS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Subscription expires</label>
+                          <input type="date" value={editShop.subscription_expires_at ? editShop.subscription_expires_at.slice(0,10) : ''}
+                            onChange={e => setEditShop(s => s ? ({ ...s, subscription_expires_at: e.target.value || null }) : s)}
+                            style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}/>
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: 10 }}>
+                        <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Shop bio</label>
+                        <input type="text" value={editShop.shop_bio || ''} onChange={e => setEditShop(s => s ? ({ ...s, shop_bio: e.target.value }) : s)}
+                          style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}/>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px Outfit,sans-serif', color: '#1A1310', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={editShop.verified_shop} onChange={e => setEditShop(s => s ? ({ ...s, verified_shop: e.target.checked }) : s)} style={{ accentColor: '#7DC243' }}/>
+                          Verified shop
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px Outfit,sans-serif', color: '#1A1310', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={editShop.is_shop} onChange={e => setEditShop(s => s ? ({ ...s, is_shop: e.target.checked }) : s)} style={{ accentColor: '#F07828' }}/>
+                          Active shop
+                        </label>
+                        <div style={{ flex: 1 }}/>
+                        <button onClick={() => handlePatch(editShop.id, {
+                          shop_name: editShop.shop_name, shop_bio: editShop.shop_bio,
+                          neighbourhood: editShop.neighbourhood, is_shop: editShop.is_shop,
+                          verified_shop: editShop.verified_shop, subscription_tier: editShop.subscription_tier,
+                          subscription_expires_at: editShop.subscription_expires_at,
+                        })} disabled={patchLoading}
+                          style={{ padding: '7px 18px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
+                          {patchLoading ? 'Saving...' : 'Save changes'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // VIEW: BLOG (CMS - full logic preserved)
   // ========================================================================
   function renderBlog() {
@@ -1624,6 +1909,7 @@ export default function AdminPage() {
             {view === 'post'   && renderPost()}
             {view === 'market' && renderMarket()}
             {view === 'blog'   && renderBlog()}
+            {view === 'shops'  && renderShops()}
           </div>
         </main>
 

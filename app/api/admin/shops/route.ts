@@ -1,0 +1,149 @@
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase-server';
+
+const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
+
+function auth(req: NextRequest): boolean {
+  return req.headers.get('x-admin-pin') === ADMIN_PIN;
+}
+
+// ── GET /api/admin/shops  -- list all shops ───────────────────────────────────
+export async function GET(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabase = createAdminClient();
+  const { data: shops, error } = await supabase
+    .from('seller_profiles')
+    .select('id, phone, display_name, profile_slug, neighbourhood, avatar_url, shop_name, shop_bio, shop_banner_url, shop_areas, is_shop, verified_shop, subscription_tier, subscription_expires_at, created_at')
+    .eq('is_shop', true)
+    .order('created_at', { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Enrich with live listing count
+  const phones = (shops || []).map(s => s.phone);
+  let countMap: Record<string, number> = {};
+  if (phones.length > 0) {
+    const now = new Date().toISOString();
+    const { data: listingRows } = await supabase
+      .from('listings')
+      .select('seller_phone')
+      .in('seller_phone', phones)
+      .eq('status', 'live')
+      .or(`expires_at.is.null,expires_at.gt.${now}`);
+    for (const row of listingRows ?? []) {
+      countMap[row.seller_phone] = (countMap[row.seller_phone] || 0) + 1;
+    }
+  }
+
+  return NextResponse.json({
+    shops: (shops || []).map(s => ({ ...s, listing_count: countMap[s.phone] || 0 })),
+  });
+}
+
+// ── PATCH /api/admin/shops  -- update shop fields ─────────────────────────────
+export async function PATCH(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const { id, ...updates } = body;
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  // Whitelist allowed fields
+  const allowed = [
+    'is_shop', 'shop_name', 'shop_bio', 'shop_banner_url', 'shop_areas',
+    'verified_shop', 'subscription_tier', 'subscription_expires_at',
+    'display_name', 'bio', 'neighbourhood',
+  ] as const;
+
+  const patch: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in updates) patch[key] = updates[key];
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('seller_profiles')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ shop: data });
+}
+
+// ── POST /api/admin/shops  -- onboard a new shop (promote existing seller or create) ──
+export async function POST(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const { phone, shop_name, shop_bio, neighbourhood, subscription_tier } = body;
+
+  if (!phone || !shop_name) {
+    return NextResponse.json({ error: 'phone and shop_name required' }, { status: 400 });
+  }
+
+  const normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '254');
+  const supabase = createAdminClient();
+
+  // Check if seller profile exists
+  const { data: existing } = await supabase
+    .from('seller_profiles')
+    .select('id, phone, display_name')
+    .eq('phone', normalizedPhone)
+    .single();
+
+  if (existing) {
+    // Promote existing profile to shop
+    const { data, error } = await supabase
+      .from('seller_profiles')
+      .update({
+        is_shop: true,
+        shop_name,
+        shop_bio: shop_bio || null,
+        subscription_tier: subscription_tier || 'free',
+        verified_shop: false,
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ shop: data, action: 'promoted' });
+  }
+
+  // Create new seller profile as shop
+  const slugBase = shop_name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  const profile_slug = `${slugBase}-${Math.random().toString(16).slice(2, 6)}`;
+
+  const { data, error } = await supabase
+    .from('seller_profiles')
+    .insert({
+      phone: normalizedPhone,
+      display_name: shop_name,
+      profile_slug,
+      neighbourhood: neighbourhood || null,
+      is_shop: true,
+      shop_name,
+      shop_bio: shop_bio || null,
+      subscription_tier: subscription_tier || 'free',
+      verified_shop: false,
+      total_sold: 0,
+      shop_areas: [],
+    })
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ shop: data, action: 'created' });
+}

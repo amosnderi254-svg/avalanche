@@ -187,6 +187,32 @@ export default function Nav() {
               </Link>
             );
           })}
+
+          {/* Shops link - visually distinct divider + link */}
+          <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }}/>
+          <Link
+            href="/shops"
+            style={{
+              flexShrink: 0,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '0 14px',
+              font: '500 13px Outfit,sans-serif',
+              color: 'var(--orange)',
+              borderBottom: '2px solid transparent',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              transition: 'color .15s',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Shops
+          </Link>
         </div>
       </div>
 

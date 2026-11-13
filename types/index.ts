@@ -64,6 +64,15 @@ export interface SellerProfile {
   edit_token?: string;     // returned only to the owner after create
   created_at: string;
   updated_at: string;
+  // ── B2B2C Shop fields (nullable for C2C sellers) ──────
+  is_shop: boolean;
+  shop_name: string | null;
+  shop_bio: string | null;
+  shop_banner_url: string | null;
+  shop_areas: string[];
+  subscription_tier: 'free' | 'starter' | 'pro';
+  subscription_expires_at: string | null;
+  verified_shop: boolean;
 }
 
 // ── Blog Articles ─────────────────────────────────────────

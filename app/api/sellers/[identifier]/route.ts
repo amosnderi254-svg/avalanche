@@ -32,17 +32,18 @@ export async function GET(
 
   // Try to find the profile
   let profileQuery;
+  const SHOP_SELECT = 'id, phone, display_name, bio, neighbourhood, avatar_url, profile_slug, total_sold, created_at, is_shop, shop_name, shop_bio, shop_banner_url, shop_areas, subscription_tier, subscription_expires_at, verified_shop';
   if (looksLikePhone(identifier)) {
     const phone = normalizePhone(identifier);
     profileQuery = supabase
       .from('seller_profiles')
-      .select('id, phone, display_name, bio, neighbourhood, avatar_url, profile_slug, total_sold, created_at')
+      .select(SHOP_SELECT)
       .eq('phone', phone)
       .single();
   } else {
     profileQuery = supabase
       .from('seller_profiles')
-      .select('id, phone, display_name, bio, neighbourhood, avatar_url, profile_slug, total_sold, created_at')
+      .select(SHOP_SELECT)
       .eq('profile_slug', identifier)
       .single();
   }
