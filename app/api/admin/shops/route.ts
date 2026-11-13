@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    void sendShopWelcomeWA(data, 'promoted');
     return NextResponse.json({ shop: data, action: 'promoted' });
   }
 
@@ -145,5 +146,60 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  void sendShopWelcomeWA(data, 'created');
   return NextResponse.json({ shop: data, action: 'created' });
+}
+
+// ── WhatsApp welcome message to new shop owner ────────────────────────────────
+async function sendShopWelcomeWA(
+  shop: { phone: string; shop_name: string; profile_slug: string; subscription_tier: string },
+  action: 'created' | 'promoted'
+) {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken  = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_WHATSAPP_FROM;
+    if (!accountSid || !authToken || !fromNumber) return;
+
+    const appUrl  = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
+    const shopUrl = `${appUrl}/sellers/${shop.profile_slug}`;
+    const tierLabel = shop.subscription_tier === 'pro'
+      ? 'Pro'
+      : shop.subscription_tier === 'starter'
+      ? 'Starter'
+      : 'Free';
+
+    const intro = action === 'promoted'
+      ? `Hi! Your seller account has been upgraded to a MyTinyverse Shop.`
+      : `Hi! Welcome to MyTinyverse -- your shop is now live.`;
+
+    const waBody =
+      `${intro}\n\n` +
+      `Shop name: ${shop.shop_name}\n` +
+      `Plan: ${tierLabel}\n` +
+      `Your shop page: ${shopUrl}\n\n` +
+      `Start listing your items and share your shop link with customers. ` +
+      `Reply to this message if you need any help.\n\n` +
+      `-- MyTinyverse Team`;
+
+    const params = new URLSearchParams({
+      To:   `whatsapp:+${shop.phone}`,
+      From: fromNumber,
+      Body: waBody,
+    });
+
+    await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        },
+        body: params.toString(),
+      }
+    );
+  } catch {
+    // Non-critical -- never block the response
+  }
 }
