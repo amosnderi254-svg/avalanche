@@ -89,7 +89,8 @@ interface UploadedPhoto {
 function PhotoUploader({ photos, setPhotos }: { photos: UploadedPhoto[]; setPhotos: (p: UploadedPhoto[]) => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);  // gallery / multiple
+  const cameraRef  = useRef<HTMLInputElement>(null);  // live camera capture
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -128,54 +129,110 @@ function PhotoUploader({ photos, setPhotos }: { photos: UploadedPhoto[]; setPhot
     handleFiles(e.dataTransfer.files);
   };
 
+  const slots = 5 - photos.length;
+  const full  = slots === 0;
+
   return (
     <div>
-      <div
-        onDrop={onDrop}
-        onDragOver={e => e.preventDefault()}
-        onClick={() => !uploading && fileRef.current?.click()}
-        style={{
-          border: '2px dashed var(--border)',
-          borderRadius: 'var(--r-lg)',
-          padding: '32px 20px',
-          textAlign: 'center',
-          cursor: uploading ? 'default' : 'pointer',
-          background: '#fafaf8',
-          marginBottom: 16,
-          transition: 'border-color .15s',
-        }}
-      >
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={e => handleFiles(e.target.files)}
-        />
-        {uploading ? (
-          <div>
-            <div style={{ width: 28, height: 28, border: '3px solid #f0f0f0', borderTopColor: 'var(--orange)', borderRadius: '50%', margin: '0 auto 12px', animation: 'spin .8s linear infinite' }}/>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>Uploading...</p>
+      {/* Hidden inputs */}
+      {/* Gallery: multi-select, no capture — opens photo library */}
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+      />
+      {/* Camera: single file, capture=environment — opens rear camera directly */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+      />
+
+      {uploading ? (
+        <div style={{ border: '1.5px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '28px 20px', textAlign: 'center', background: '#fafaf8', marginBottom: 16 }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #f0f0f0', borderTopColor: 'var(--orange)', borderRadius: '50%', margin: '0 auto 10px', animation: 'spin .8s linear infinite' }}/>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>Uploading photo...</p>
+        </div>
+      ) : !full ? (
+        <>
+          {/* Two primary action buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            {/* Take photo — opens camera directly on mobile */}
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '20px 12px',
+                border: '2px solid var(--orange)',
+                borderRadius: 'var(--r-lg)',
+                background: '#fff4ec',
+                cursor: 'pointer',
+                transition: 'background .15s',
+              }}
+            >
+              <div style={{ width: 44, height: 44, background: 'var(--orange)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Camera shutter icon */}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ font: '600 14px Outfit,sans-serif', color: 'var(--orange)', margin: '0 0 2px', textAlign: 'center' }}>Take a photo</p>
+                <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>Opens camera</p>
+              </div>
+            </button>
+
+            {/* Choose from gallery */}
+            <button
+              type="button"
+              onClick={() => galleryRef.current?.click()}
+              onDrop={onDrop}
+              onDragOver={e => e.preventDefault()}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '20px 12px',
+                border: '2px dashed var(--border)',
+                borderRadius: 'var(--r-lg)',
+                background: '#fafaf8',
+                cursor: 'pointer',
+                transition: 'border-color .15s, background .15s',
+              }}
+            >
+              <div style={{ width: 44, height: 44, background: '#ede9e2', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Gallery icon */}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ font: '600 14px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 2px', textAlign: 'center' }}>From gallery</p>
+                <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>Or drag and drop</p>
+              </div>
+            </button>
           </div>
-        ) : (
-          <>
-            <div style={{ width: 48, height: 48, background: '#fff4ec', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </div>
-            <p style={{ font: '600 15px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 4px' }}>
-              Add photos ({photos.length}/5)
-            </p>
-            <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-              Tap to browse or drag photos here. Max 5MB each.
-            </p>
-          </>
-        )}
-      </div>
+
+          <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px', textAlign: 'center' }}>
+            {photos.length === 0
+              ? 'Add up to 5 photos. First photo is the cover.'
+              : `${slots} slot${slots === 1 ? '' : 's'} remaining. First photo is the cover.`}
+          </p>
+        </>
+      ) : (
+        <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px', textAlign: 'center' }}>
+          Maximum 5 photos reached.
+        </p>
+      )}
 
       {photos.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginBottom: 8 }}>
