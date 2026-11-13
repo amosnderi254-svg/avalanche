@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const imageUrls: string[] = [];
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const file = formData.get(`photo${i}`) as File | null;
       if (!file) continue;
 

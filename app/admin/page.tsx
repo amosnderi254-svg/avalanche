@@ -7,14 +7,31 @@ import type { Listing, Article, ArticleStatus } from '@/types';
 const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
 
 // ── Form constants (shared with /sell) ───────────────────────────────────────
-const CATEGORIES = ['Bikes and scooters','Strollers','Car seats','Toys and games','Books','Baby gear','Clothes and shoes','Baby monitors','Bouncers and rockers','Cots and cribs','Other'];
+// Use same IDs as lib/constants.ts so category filtering works on the marketplace
+const CATEGORIES = [
+  { id: 'bikes',     label: 'Bikes' },
+  { id: 'scooters',  label: 'Scooters' },
+  { id: 'strollers', label: 'Strollers' },
+  { id: 'car-seats', label: 'Car Seats' },
+  { id: 'toys',      label: 'Toys and Games' },
+  { id: 'books',     label: 'Books' },
+  { id: 'baby-gear', label: 'Baby Gear' },
+  { id: 'shoes',     label: 'Shoes' },
+  { id: 'clothing',  label: 'Clothing' },
+];
 const AGE_RANGES = ['0 to 6 months','6 to 18 months','1 to 3 years','3 to 5 years','5 to 8 years','8 and above','All ages'];
 const CONDITIONS = [
   { id: 'like_new', label: 'Like new', desc: 'Used once or twice. Looks brand new.' },
   { id: 'good', label: 'Good', desc: 'Some wear but works perfectly.' },
   { id: 'fair', label: 'Fair', desc: 'Visible wear. Fully functional.' },
 ];
-const NAIROBI_HOODS = ['Westlands','Karen','Kilimani','Runda','Gigiri','Lavington','Kasarani','Thika Road','Muthaiga','Ruaka','Langata','Parklands','Eastlands','South B','South C','Embakasi','Donholm','Buruburu','Other'];
+const NAIROBI_HOODS = [
+  'Westlands','Kilimani','Karen','Lavington','Runda','Muthaiga','Spring Valley',
+  'Kitisuru','Parklands','Upperhill','Kileleshwa','Hurlingham','Langata',
+  'Ngong Road','South B','South C','Embakasi','Kasarani','Ruaka','Kikuyu',
+  'Thika Road','Eastleigh','Zimmerman','Githurai','Rongai','Kitengela',
+  'Syokimau','Ruiru','Juja','Kabete','Ridgeways',
+];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -847,7 +864,7 @@ export default function AdminPage() {
                         value={postForm.category}
                         onChange={e => setPostForm(f => ({ ...f, category: e.target.value }))}>
                         <option value="">Select category</option>
-                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                       </select>
                       {postErrors.category && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.category}</span>}
                     </div>
@@ -914,7 +931,7 @@ export default function AdminPage() {
                 {/* Photos */}
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
                   <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 4px', color: 'var(--text-1)' }}>Photos</h3>
-                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px' }}>Up to 3 photos. First photo is the cover image.</p>
+                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px' }}>Up to 5 photos. First photo is the cover image.</p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {postPreviews.map((src, i) => (
                       <div key={i} style={{ position: 'relative' }}>
@@ -932,7 +949,7 @@ export default function AdminPage() {
                         )}
                       </div>
                     ))}
-                    {postPhotos.length < 3 && (
+                    {postPhotos.length < 5 && (
                       <button type="button"
                         onClick={() => postFileRef.current?.click()}
                         style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 8, background: '#fafaf9', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -946,7 +963,7 @@ export default function AdminPage() {
                   <input ref={postFileRef} type="file" accept="image/*" style={{ display: 'none' }}
                     onChange={e => {
                       const file = e.target.files?.[0];
-                      if (!file || postPhotos.length >= 3) return;
+                      if (!file || postPhotos.length >= 5) return;
                       const reader = new FileReader();
                       reader.onload = ev => {
                         setPostPhotos(prev => [...prev, file]);
