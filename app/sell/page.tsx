@@ -219,6 +219,13 @@ export default function SellPage() {
   const [condition, setCondition] = useState<Condition | ''>('');
   const [price, setPrice]         = useState('');
   const [description, setDesc]    = useState('');
+
+  /* AI assist state */
+  const [aiOpen, setAiOpen]           = useState(false);
+  const [aiNotes, setAiNotes]         = useState('');
+  const [aiLoading, setAiLoading]     = useState(false);
+  const [aiErr, setAiErr]             = useState('');
+  const [aiPriceSuggestion, setAiPrice] = useState('');
   const [photos, setPhotos]       = useState<UploadedPhoto[]>([]);
   const [sellerName, setSellerName] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
@@ -234,6 +241,31 @@ export default function SellPage() {
   const priceNum = Number(price) || 0;
   const { tier, fee } = getFeeTier(priceNum);
   const isFree = tier === 'donation';
+
+  /* ── AI assist ── */
+  async function runAiAssist() {
+    if (!aiNotes.trim()) return;
+    setAiLoading(true);
+    setAiErr('');
+    try {
+      const res = await fetch('/api/ai/listing-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: aiNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI assist failed');
+      if (data.title)       setTitle(data.title);
+      if (data.category)    setCategory(data.category);
+      if (data.condition)   setCondition(data.condition as Condition);
+      if (data.description) setDesc(data.description);
+      if (data.price_suggestion) setAiPrice(data.price_suggestion);
+      setAiOpen(false);
+    } catch (err: unknown) {
+      setAiErr(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+    }
+    setAiLoading(false);
+  }
 
   /* ── Validation ── */
   const detailsValid = title.trim().length >= 3 && category && condition && price !== '';
@@ -373,9 +405,114 @@ export default function SellPage() {
         {/* ── STEP 1: Item details ── */}
         {step === 'details' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <h2 style={{ font: '700 20px Outfit,sans-serif', color: 'var(--text-1)', margin: 0 }}>
-              Tell us about the item
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <h2 style={{ font: '700 20px Outfit,sans-serif', color: 'var(--text-1)', margin: 0 }}>
+                Tell us about the item
+              </h2>
+              <button
+                type="button"
+                onClick={() => { setAiOpen(o => !o); setAiErr(''); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px',
+                  border: '1.5px solid var(--orange)',
+                  borderRadius: 'var(--r-pill)',
+                  background: aiOpen ? 'var(--orange)' : '#fff4ec',
+                  font: '600 13px Outfit,sans-serif',
+                  color: aiOpen ? '#fff' : 'var(--orange)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'all .15s',
+                }}
+              >
+                {/* sparkle icon */}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                AI Assist
+              </button>
+            </div>
+
+            {/* AI assist panel */}
+            {aiOpen && (
+              <div style={{ border: '1.5px solid var(--orange)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 18px', background: '#fff4ec', borderBottom: '1px solid #ffd9b8', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  <span style={{ font: '600 14px Outfit,sans-serif', color: 'var(--orange)' }}>
+                    AI Listing Assistant
+                  </span>
+                  <span style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', marginLeft: 2 }}>
+                    Describe the item and AI fills in the form
+                  </span>
+                </div>
+                <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', font: '600 12px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
+                      Describe what you are selling
+                    </label>
+                    <textarea
+                      value={aiNotes}
+                      onChange={e => setAiNotes(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. Maclaren stroller, navy, used for about a year, folds easily, one small scratch on the frame, comes with rain cover"
+                      style={{ width: '100%', boxSizing: 'border-box', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '10px 12px', font: '400 14px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+                    />
+                    <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: '4px 0 0' }}>
+                      Include brand, size, age suitability, condition, what is included. The more detail, the better the result.
+                    </p>
+                  </div>
+                  {aiErr && (
+                    <p style={{ font: '400 13px Outfit,sans-serif', color: '#c62828', margin: 0 }}>{aiErr}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={runAiAssist}
+                    disabled={aiLoading || !aiNotes.trim()}
+                    className="btn btn-primary"
+                    style={{ height: 44, font: '600 14px Outfit,sans-serif', cursor: (aiLoading || !aiNotes.trim()) ? 'default' : 'pointer', opacity: (aiLoading || !aiNotes.trim()) ? 0.6 : 1 }}
+                  >
+                    {aiLoading ? (
+                      <>
+                        <div style={{ width: 16, height: 16, border: '2.5px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite', marginRight: 8 }}/>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 7 }} aria-hidden="true">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        Fill in listing for me
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Price suggestion banner (shown after AI runs) */}
+            {aiPriceSuggestion && !aiOpen && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#edf7e2', border: '1px solid #c5e8a0', borderRadius: 'var(--r-md)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>
+                  AI suggests: <strong style={{ color: 'var(--green)' }}>{aiPriceSuggestion}</strong>
+                  <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>-- set your price below</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAiPrice('')}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'flex' }}
+                  aria-label="Dismiss"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                    <line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/>
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* Title */}
             <div>
