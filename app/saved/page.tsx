@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import ListingCard from '@/components/ListingCard';
+import EmptyState from '@/components/EmptyState';
 import type { Listing } from '@/types';
 
 const SAVED_KEY = 'mtv_saved';
@@ -94,27 +95,37 @@ export default function SavedPage() {
         </div>
 
         {listings.length === 0 ? (
-          /* Empty state */
-          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{
-              width: 80, height: 80, borderRadius: '50%',
-              background: '#FFF4EE', margin: '0 auto 20px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="1.8">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            </div>
-            <h2 style={{ font: '700 20px Outfit,sans-serif', margin: '0 0 8px', color: 'var(--text-1)' }}>
-              No saved items yet
-            </h2>
-            <p style={{ font: '400 14px/1.6 Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 28px', maxWidth: 320, marginInline: 'auto' }}>
-              Tap the heart icon on any listing to save it here for later.
-            </p>
-            <a href="/" className="btn btn-primary">
-              Browse listings
-            </a>
-          </div>
+          <EmptyState
+            iconPath="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            headline="Your shortlist is empty"
+            body="Tap the heart on any listing to save it here - then compare with your partner before buying."
+            actions={[
+              {
+                label: 'Browse all listings',
+                variant: 'primary',
+                href: '/',
+              },
+              {
+                label: 'List your own item',
+                variant: 'secondary',
+                href: '/sell',
+              },
+              {
+                label: 'Share MyTinyverse',
+                variant: 'ghost',
+                whatsapp: true,
+                externalHref: `https://wa.me/?text=${encodeURIComponent('Hey! I found MyTinyverse - a marketplace for parents to buy, sell and donate gently used kids\' items in Kenya. Check it out: https://mytinyverse.co.ke')}`,
+              },
+            ]}
+            chips={[
+              { label: 'Bikes', iconPath: 'M12 2a10 10 0 100 20A10 10 0 0012 2zm0 0v20M2 12h20', href: '/?category=bikes' },
+              { label: 'Strollers', iconPath: 'M3 3h18v4H3zM12 7v14M5 21h14', href: '/?category=strollers' },
+              { label: 'Shoes', iconPath: 'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z', href: '/?category=shoes' },
+              { label: 'Toys', iconPath: 'M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z', href: '/?category=toys' },
+              { label: 'Books', iconPath: 'M4 19.5A2.5 2.5 0 016.5 17H20', href: '/?category=books' },
+            ]}
+            chipsLabel="Browse by category:"
+          />
         ) : (
           <>
             <div style={{

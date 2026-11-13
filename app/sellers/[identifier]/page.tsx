@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
+import EmptyState from '@/components/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -296,23 +297,37 @@ export default async function SellerProfilePage(
               ))}
             </div>
           ) : (
-            <div style={{
-              background: '#f9f9f8',
-              border: '1px dashed var(--border)',
-              borderRadius: 'var(--r-lg)',
-              padding: '48px 24px',
-              textAlign: 'center',
-            }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}>
-                <polyline points="21 8 21 21 3 21 3 8"/>
-                <rect x="1" y="3" width="22" height="5"/>
-                <line x1="10" y1="12" x2="14" y2="12"/>
-              </svg>
-              <p style={{ font: '500 15px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 16px' }}>
-                No active listings right now
-              </p>
-              <Link href="/" className="btn btn-secondary btn-sm">Browse all listings</Link>
-            </div>
+            <EmptyState
+              iconPath="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"
+              iconPath2="M3 6h18M16 10a4 4 0 01-8 0"
+              headline={`${profile.display_name.split(' ')[0]} isn't selling right now`}
+              body="Check back soon - parents list new items every day. In the meantime, browse what other sellers have."
+              actions={[
+                {
+                  label: 'Browse all items',
+                  variant: 'primary',
+                  href: '/',
+                },
+                {
+                  label: 'List your own item',
+                  variant: 'secondary',
+                  href: '/sell',
+                },
+                {
+                  label: 'Share this seller',
+                  variant: 'ghost',
+                  whatsapp: true,
+                  externalHref: `https://wa.me/?text=${encodeURIComponent(`Check out ${profile.display_name}'s profile on MyTinyverse - Kenya's marketplace for gently used kids' items: ${APP_URL}/sellers/${profile.profile_slug}`)}`,
+                },
+              ]}
+              chips={[
+                { label: 'Bikes', iconPath: 'M12 2a10 10 0 100 20A10 10 0 0012 2zm0 0v20M2 12h20', href: '/?category=bikes' },
+                { label: 'Strollers', iconPath: 'M3 3h18v4H3zM12 7v14M5 21h14', href: '/?category=strollers' },
+                { label: 'Car seats', iconPath: 'M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3', href: '/?category=car-seats' },
+                { label: 'Toys', iconPath: 'M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z', href: '/?category=toys' },
+              ]}
+              chipsLabel="Browse similar items:"
+            />
           )}
         </div>
       </div>
