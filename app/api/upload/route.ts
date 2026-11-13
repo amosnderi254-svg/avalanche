@@ -4,6 +4,15 @@ import { createServerClient } from '@/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
+  // Guard against direct API abuse -- uploads must originate from the app.
+  // This blocks curl/bot abuse while allowing browser requests from the sell page.
+  const origin = req.headers.get('origin') || '';
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke').replace(/\/$/, '');
+  const isLocalDev = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
+  if (!isLocalDev && !origin.startsWith(appUrl)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

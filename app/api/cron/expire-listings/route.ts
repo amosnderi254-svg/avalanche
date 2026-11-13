@@ -6,12 +6,15 @@ import { createServerClient } from '@/lib/supabase-server';
 // Called by Vercel Cron daily at 2am -- marks expired live listings as rejected.
 // Vercel sends Authorization: Bearer <CRON_SECRET> header on production.
 export async function GET(req: NextRequest) {
+  // Always require auth -- if CRON_SECRET env var is missing, lock the endpoint
+  // down rather than allow it open (flipped from the old opt-in check).
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'Cron not configured -- set CRON_SECRET env var' }, { status: 503 });
+  }
+  const authHeader = req.headers.get('authorization');
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createServerClient();

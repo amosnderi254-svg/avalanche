@@ -7,9 +7,11 @@ import { createServerClient } from '@/lib/supabase-server';
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = createServerClient();
+    // Explicit column list -- deliberately excludes edit_token and mpesa_code
+    // to prevent leaking seller authentication secrets through the public endpoint.
     const { data, error } = await supabase
       .from('listings')
-      .select('*')
+      .select('id,title,price,category,condition,description,location,seller_name,seller_phone,seller_whatsapp,seller_email,images,status,created_at,updated_at,expires_at,fee_tier,fee_amount,whatsapp_clicks,view_count')
       .eq('id', params.id)
       .single();
 

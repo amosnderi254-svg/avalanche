@@ -86,8 +86,17 @@ const NUDGE_TIPS: Record<string, string> = {
   default:   'Adding more photos (especially condition close-ups) typically doubles inquiry rates.',
 };
 
+const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
+
 // ── POST /api/notify/whatsapp ──────────────────────────────────────
 export async function POST(req: NextRequest) {
+  // Auth: only the admin panel may trigger outbound WhatsApp messages.
+  // Without this check anyone on the internet can send messages at platform cost.
+  const pin = req.headers.get('x-admin-pin');
+  if (pin !== ADMIN_PIN) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body: NotifyBody = await req.json();
     const { type, phone, data } = body;

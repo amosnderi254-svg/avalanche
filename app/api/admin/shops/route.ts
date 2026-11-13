@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
 
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
+const ADMIN_PIN = process.env.ADMIN_PIN || '0784';
 
 function auth(req: NextRequest): boolean {
   return req.headers.get('x-admin-pin') === ADMIN_PIN;
