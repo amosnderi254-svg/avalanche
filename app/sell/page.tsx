@@ -1,12 +1,12 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import { getFeeTier } from '@/lib/constants';
 
 /* ── Types ───────────────────────────────────────────────────── */
-type Step = 'details' | 'photos' | 'seller' | 'payment' | 'submitting';
+type Step = 'details' | 'photos' | 'contact' | 'submitting';
 type Condition = 'like_new' | 'good' | 'fair';
 
 const CATEGORIES = [
@@ -39,8 +39,7 @@ const NAIROBI_AREAS = [
 const STEPS: { id: Step; label: string }[] = [
   { id: 'details',  label: 'Item details' },
   { id: 'photos',   label: 'Photos' },
-  { id: 'seller',   label: 'Your info' },
-  { id: 'payment',  label: 'Pay and list' },
+  { id: 'contact',  label: 'Contact & Pay' },
 ];
 
 function ProgressBar({ current }: { current: Step }) {
@@ -297,6 +296,24 @@ export default function SellPage() {
   const [stkLoading, setStkLoading] = useState(false);
   const [stkErr, setStkErr]       = useState('');
   const [submitErr, setSubmitErr] = useState('');
+  const [returningSellerLoaded, setReturningSellerLoaded] = useState(false);
+
+  /* ── Load cached seller info (returning sellers auto-fill) ── */
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('mtv_seller');
+      if (cached) {
+        const { name, phone, area: savedArea, email } = JSON.parse(cached);
+        if (name)      setSellerName(name);
+        if (phone)     { setSellerPhone(phone); setPayPhone(phone); }
+        if (savedArea) setArea(savedArea);
+        if (email)     setSellerEmail(email);
+        setReturningSellerLoaded(true);
+      }
+    } catch {
+      // localStorage blocked or corrupt -- silent fail
+    }
+  }, []);
 
   const priceNum = Number(price) || 0;
   const { tier, fee } = getFeeTier(priceNum);
@@ -329,7 +346,6 @@ export default function SellPage() {
 
   /* ── Validation ── */
   const detailsValid = title.trim().length >= 3 && category && condition && price !== '';
-  const photosValid  = true; // photos optional but encouraged
   const sellerValid  = sellerName.trim().length >= 2 && sellerPhone.trim().length >= 9 && area;
   const paymentValid = isFree || (mpesaCode.trim().length >= 6);
 
@@ -360,6 +376,17 @@ export default function SellPage() {
   async function submitListing() {
     setStep('submitting');
     setSubmitErr('');
+
+    // Cache seller info so returning sellers skip re-entry next time
+    try {
+      localStorage.setItem('mtv_seller', JSON.stringify({
+        name: sellerName.trim(),
+        phone: sellerPhone.trim(),
+        area,
+        email: sellerEmail.trim(),
+      }));
+    } catch { /* silent fail */ }
+
     try {
       const phone = sellerPhone.trim().replace(/\s+/g, '');
       const normalizedPhone = phone.startsWith('0') ? '254' + phone.slice(1) : phone;
@@ -397,7 +424,7 @@ export default function SellPage() {
       router.push(`/sell/success?ref=${listing.id}`);
     } catch (err: unknown) {
       setSubmitErr(err instanceof Error ? err.message : 'Submission failed. Please try again.');
-      setStep('payment');
+      setStep('contact');
     }
   }
 
@@ -755,7 +782,7 @@ export default function SellPage() {
               </button>
               <button
                 className="btn btn-primary"
-                onClick={() => setStep('seller')}
+                onClick={() => setStep('contact')}
                 style={{ flex: 1, height: 50, font: '600 15px Outfit,sans-serif' }}
               >
                 {photos.length === 0 ? 'Skip photos and continue' : `Continue with ${photos.length} photo${photos.length > 1 ? 's' : ''}`}
@@ -767,18 +794,42 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* ── STEP 3: Seller info ── */}
-        {step === 'seller' && (
+        {/* ── STEP 3: Contact & Pay (merged) ── */}
+        {step === 'contact' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
             <div>
               <h2 style={{ font: '700 20px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 6px' }}>
-                Your contact details
+                Your details & payment
               </h2>
               <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                Buyers will contact you directly on WhatsApp. Your phone number is never shown publicly in text.
+                Buyers will contact you on WhatsApp. Your number is never shown publicly in text.
               </p>
             </div>
 
+            {/* Returning seller banner */}
+            {returningSellerLoaded && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#edf7e2', border: '1px solid #c5e8a0', borderRadius: 'var(--r-md)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>
+                  Welcome back! Your details have been filled in.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSellerName(''); setSellerPhone(''); setArea('');
+                    setSellerEmail(''); setPayPhone('');
+                    setReturningSellerLoaded(false);
+                  }}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', font: '400 12px Outfit,sans-serif', padding: '2px 6px', borderRadius: 'var(--r-sm)' }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {/* Seller name */}
             <div>
               <label style={{ display: 'block', font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
                 Your name *
@@ -793,6 +844,7 @@ export default function SellPage() {
               />
             </div>
 
+            {/* WhatsApp phone */}
             <div>
               <label style={{ display: 'block', font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
                 WhatsApp number *
@@ -809,6 +861,7 @@ export default function SellPage() {
               </p>
             </div>
 
+            {/* Area */}
             <div>
               <label style={{ display: 'block', font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
                 Your area in Nairobi *
@@ -828,6 +881,7 @@ export default function SellPage() {
               </p>
             </div>
 
+            {/* Email (optional) */}
             <div>
               <label style={{ display: 'block', font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
                 Email address
@@ -842,59 +896,20 @@ export default function SellPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setStep('photos')}
-                style={{ height: 50, font: '600 15px Outfit,sans-serif' }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }} aria-hidden="true">
-                  <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-                Back
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!sellerValid}
-                onClick={() => { if (sellerValid) { setPayPhone(sellerPhone); setStep('payment'); } }}
-                style={{ flex: 1, height: 50, font: '600 15px Outfit,sans-serif', cursor: sellerValid ? 'pointer' : 'default', opacity: sellerValid ? 1 : 0.5 }}
-              >
-                {isFree ? 'Review and submit' : 'Go to payment'}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 8 }} aria-hidden="true">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
 
-        {/* ── STEP 4: Payment + summary ── */}
-        {step === 'payment' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <h2 style={{ font: '700 20px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 6px' }}>
-                {isFree ? 'Review and publish' : 'Pay the listing fee and publish'}
-              </h2>
-              <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                {isFree
-                  ? 'Your donation listing is free. Review the summary below and hit publish.'
-                  : `Pay KES ${fee} via M-Pesa, then confirm your listing.`
-                }
-              </p>
-            </div>
-
-            {/* Summary card */}
+            {/* Listing summary card */}
             <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ font: '700 15px Outfit,sans-serif', color: 'var(--text-1)', borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 4 }}>
                 Listing summary
               </div>
               {[
-                { label: 'Title', value: title },
-                { label: 'Category', value: CATEGORIES.find(c => c.id === category)?.label || category },
-                { label: 'Condition', value: CONDITIONS.find(c => c.id === condition)?.label || condition },
-                { label: 'Price', value: priceNum === 0 ? 'FREE (donation)' : `KES ${priceNum.toLocaleString()}` },
-                { label: 'Location', value: area },
-                { label: 'Photos', value: photos.length > 0 ? `${photos.length} photo${photos.length > 1 ? 's' : ''}` : 'None added' },
+                { label: 'Title',       value: title },
+                { label: 'Category',    value: CATEGORIES.find(c => c.id === category)?.label || category },
+                { label: 'Condition',   value: CONDITIONS.find(c => c.id === condition)?.label || condition },
+                { label: 'Price',       value: priceNum === 0 ? 'FREE (donation)' : `KES ${priceNum.toLocaleString()}` },
+                { label: 'Photos',      value: photos.length > 0 ? `${photos.length} photo${photos.length > 1 ? 's' : ''}` : 'None added' },
                 { label: 'Listing fee', value: isFree ? 'Free' : `KES ${fee}` },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
@@ -904,8 +919,8 @@ export default function SellPage() {
               ))}
             </div>
 
-            {/* M-Pesa payment block */}
-            {!isFree && (
+            {/* M-Pesa payment block — shown once seller info is complete */}
+            {!isFree && sellerValid && (
               <div style={{ border: '1.5px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 20px', background: '#f9fafb', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -932,14 +947,14 @@ export default function SellPage() {
                           type="tel"
                           value={payPhone}
                           onChange={e => setPayPhone(e.target.value)}
-                          placeholder="e.g. 0712 345 678"
+                          placeholder={sellerPhone.trim() || 'e.g. 0712 345 678'}
                           style={{ flex: 1, height: 44, border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0 14px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', outline: 'none' }}
                         />
                         <button
                           onClick={sendStkPush}
-                          disabled={stkLoading || !payPhone.trim()}
+                          disabled={stkLoading || !(payPhone.trim() || sellerPhone.trim())}
                           className="btn btn-green"
-                          style={{ height: 44, padding: '0 18px', font: '600 14px Outfit,sans-serif', cursor: (stkLoading || !payPhone.trim()) ? 'default' : 'pointer', opacity: (stkLoading || !payPhone.trim()) ? 0.6 : 1, flexShrink: 0 }}
+                          style={{ height: 44, padding: '0 18px', font: '600 14px Outfit,sans-serif', cursor: (stkLoading || !(payPhone.trim() || sellerPhone.trim())) ? 'default' : 'pointer', opacity: (stkLoading || !(payPhone.trim() || sellerPhone.trim())) ? 0.6 : 1, flexShrink: 0 }}
                         >
                           {stkLoading ? 'Sending...' : 'Send prompt'}
                         </button>
@@ -958,7 +973,7 @@ export default function SellPage() {
                       </svg>
                       <div>
                         <div style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-1)', marginBottom: 2 }}>
-                          Payment prompt sent to {payPhone}
+                          Payment prompt sent to {payPhone || sellerPhone}
                         </div>
                         <div style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-2)' }}>
                           Check your phone, enter your M-Pesa PIN to pay KES {fee}, then enter the confirmation code below.
@@ -967,7 +982,7 @@ export default function SellPage() {
                     </div>
                   )}
 
-                  {/* M-Pesa code entry */}
+                  {/* M-Pesa confirmation code */}
                   <div style={{ marginTop: stkSent ? 0 : 16 }}>
                     <label style={{ display: 'block', font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', marginBottom: 6 }}>
                       M-Pesa confirmation code *
@@ -996,6 +1011,15 @@ export default function SellPage() {
               </div>
             )}
 
+            {/* Nudge: complete seller info to unlock payment */}
+            {!isFree && !sellerValid && (
+              <div style={{ padding: '12px 16px', background: '#f9fafb', border: '1.5px dashed var(--border)', borderRadius: 'var(--r-md)' }}>
+                <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
+                  Complete your details above to unlock M-Pesa payment.
+                </p>
+              </div>
+            )}
+
             {submitErr && (
               <div style={{ padding: '12px 16px', background: '#fff0ee', border: '1px solid #f9c5be', borderRadius: 'var(--r-md)', font: '400 13px Outfit,sans-serif', color: '#c62828' }}>
                 {submitErr}
@@ -1005,7 +1029,7 @@ export default function SellPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 className="btn btn-secondary"
-                onClick={() => setStep('seller')}
+                onClick={() => setStep('photos')}
                 style={{ height: 50, font: '600 15px Outfit,sans-serif' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }} aria-hidden="true">
@@ -1015,9 +1039,9 @@ export default function SellPage() {
               </button>
               <button
                 className="btn btn-primary"
-                disabled={!paymentValid}
+                disabled={!sellerValid || !paymentValid}
                 onClick={submitListing}
-                style={{ flex: 1, height: 50, font: '600 15px Outfit,sans-serif', cursor: paymentValid ? 'pointer' : 'default', opacity: paymentValid ? 1 : 0.5 }}
+                style={{ flex: 1, height: 50, font: '600 15px Outfit,sans-serif', cursor: (sellerValid && paymentValid) ? 'pointer' : 'default', opacity: (sellerValid && paymentValid) ? 1 : 0.5 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }} aria-hidden="true">
                   <polyline points="20 6 9 17 4 12"/>
