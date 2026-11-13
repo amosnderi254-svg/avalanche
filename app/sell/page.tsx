@@ -181,7 +181,10 @@ function PhotoUploader({ photos, setPhotos }: { photos: UploadedPhoto[]; setPhot
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginBottom: 8 }}>
           {photos.map((p, i) => (
             <div key={p.url} style={{ position: 'relative', paddingTop: '75%', background: '#f5f4f2', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-              <img src={p.previewUrl} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>
+              {/* Blurred backdrop */}
+              <img src={p.previewUrl} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.1)', opacity: 0.55 }}/>
+              {/* Sharp subject */}
+              <img src={p.previewUrl} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}/>
               {i === 0 && (
                 <span style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,.55)', color: '#fff', font: '600 9px Outfit,sans-serif', padding: '2px 6px', borderRadius: 'var(--r-pill)' }}>
                   COVER

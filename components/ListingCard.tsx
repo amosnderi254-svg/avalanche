@@ -55,11 +55,21 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       {/* Image */}
       <Link href={`/listing/${listing.id}`} style={{ display: 'block', position: 'relative', paddingTop: '66%', background: '#F5EFE6', overflow: 'hidden' }}>
         {hasImage ? (
-          <img
-            src={listing.images[0]}
-            alt={listing.title}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+          <>
+            {/* Blurred backdrop — fills container, softens busy backgrounds */}
+            <img
+              src={listing.images[0]}
+              alt=""
+              aria-hidden="true"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(18px)', transform: 'scale(1.1)', opacity: 0.55 }}
+            />
+            {/* Sharp subject — contain keeps the full item visible, no cropping */}
+            <img
+              src={listing.images[0]}
+              alt={listing.title}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </>
         ) : (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>
             {/* Box SVG icon -- no emoji */}

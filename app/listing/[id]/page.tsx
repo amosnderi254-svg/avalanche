@@ -5,6 +5,7 @@ import NayaChat from '@/components/NayaChat';
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase-server';
 import { CONDITION_LABELS } from '@/lib/constants';
+import ListingImages from '@/components/ListingImages';
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 
@@ -63,20 +64,16 @@ export default async function ListingPage({ params }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32 }}>
           {/* Images */}
           {listing.images && listing.images.length > 0 ? (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: listing.images.length > 1 ? 'repeat(auto-fill, minmax(200px, 1fr))' : '1fr',
-              gap: 8,
-            }}>
-              {listing.images.slice(0, 4).map((src: string, i: number) => (
-                <div key={i} style={{ position: 'relative', paddingTop: '66%', borderRadius: 12, overflow: 'hidden', background: '#F5EFE6' }}>
-                  <img src={src} alt={`${listing.title} ${i + 1}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>
-                </div>
-              ))}
-            </div>
+            <ListingImages images={listing.images} title={listing.title} />
           ) : (
-            <div style={{ borderRadius: 12, background: '#F5EFE6', paddingTop: '50%', position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>📦</div>
+            <div style={{ borderRadius: 14, background: '#F5EFE6', paddingTop: '52%', position: 'relative' }}>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true">
+                  <polyline points="21 8 21 21 3 21 3 8"/>
+                  <rect x="1" y="3" width="22" height="5"/>
+                  <line x1="10" y1="12" x2="14" y2="12"/>
+                </svg>
+              </div>
             </div>
           )}
 
