@@ -1,13 +1,12 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Nav from '@/components/Nav';
 import Link from 'next/link';
 import type { Listing, Article, ArticleStatus } from '@/types';
 
 const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
+const WA_ADMIN = '254790784084';
 
-// ── Form constants (shared with /sell) ───────────────────────────────────────
-// Use same IDs as lib/constants.ts so category filtering works on the marketplace
+// ── Form constants ────────────────────────────────────────────────────────────
 const CATEGORIES = [
   { id: 'bikes',     label: 'Bikes' },
   { id: 'scooters',  label: 'Scooters' },
@@ -33,8 +32,7 @@ const NAIROBI_HOODS = [
   'Syokimau','Ruiru','Juja','Kabete','Ridgeways',
 ];
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface StatsData {
   tiles: {
     live_listings: number;
@@ -58,183 +56,238 @@ interface StatsData {
   demand_gaps: { query: string; count: number }[];
 }
 
-type BlogEditorMode = 'generate' | 'manual';
+type AdminView   = 'home' | 'queue' | 'post' | 'market' | 'blog';
+type ModTab      = 'pending' | 'live' | 'rejected';
+type BlogEdMode  = 'generate' | 'manual';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtKES(n: number) {
-  return n === 0 ? 'KES 0' : `KES ${n.toLocaleString()}`;
-}
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtKES(n: number) { return n === 0 ? 'KES 0' : `KES ${n.toLocaleString()}`; }
 function fmtMonth(yyyymm: string) {
   const [y, m] = yyyymm.split('-');
-  const d = new Date(Number(y), Number(m) - 1, 1);
-  return d.toLocaleString('default', { month: 'short', year: '2-digit' });
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleString('default', { month: 'short', year: '2-digit' });
 }
-
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
 function categoryLabel(c: string) {
-  const MAP: Record<string, string> = {
-    bikes: 'Bikes', scooters: 'Scooters', 'baby-gear': 'Baby Gear',
-    strollers: 'Strollers', toys: 'Toys', books: 'Books',
-    shoes: 'Shoes', 'car-seats': 'Car Seats', playpens: 'Playpens',
-    other: 'Other',
+  const M: Record<string,string> = {
+    bikes:'Bikes', scooters:'Scooters', 'baby-gear':'Baby Gear',
+    strollers:'Strollers', toys:'Toys', books:'Books',
+    shoes:'Shoes', 'car-seats':'Car Seats', clothing:'Clothing', other:'Other',
   };
-  return MAP[c] || c;
+  return M[c] || c;
 }
-
 function tierLabel(t: string) {
-  const MAP: Record<string, string> = {
-    donation: 'Donation (Free)', starter: 'Starter (KES 99)',
-    standard: 'Standard (KES 299)', premium: 'Premium (KES 499)',
+  const M: Record<string,string> = {
+    donation:'Donation (Free)', starter:'Starter (KES 99)',
+    standard:'Standard (KES 299)', premium:'Premium (KES 499)',
   };
-  return MAP[t] || t;
+  return M[t] || t;
 }
-
 function daysUntil(iso: string) {
-  const diff = new Date(iso).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000));
 }
-
 function slugify(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 80);
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,80);
 }
 
 const STATUS_BADGE: Record<ArticleStatus, { bg: string; fg: string; label: string }> = {
-  draft:     { bg: '#f5f4f2', fg: '#666',     label: 'Draft' },
-  pending:   { bg: '#FFF8E1', fg: '#F57F17',  label: 'Pending Review' },
-  published: { bg: '#E8F5E9', fg: '#2E7D32',  label: 'Published' },
+  draft:     { bg: '#f5f4f2', fg: '#666',    label: 'Draft' },
+  pending:   { bg: '#FFF8E1', fg: '#F57F17', label: 'Pending Review' },
+  published: { bg: '#E8F5E9', fg: '#2E7D32', label: 'Published' },
 };
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// WhatsApp SVG path
+const WA_PATH = 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884zm8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z';
 
-function StatTile({ label, value, sub, accent }: {
-  label: string; value: string | number; sub?: string; accent?: boolean;
-}) {
+// ── Nav items ─────────────────────────────────────────────────────────────────
+const NAV_ITEMS: { id: AdminView; label: string; icon: string }[] = [
+  { id: 'home',   label: 'Command', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
+  { id: 'queue',  label: 'Queue',   icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+  { id: 'post',   label: 'Post',    icon: 'M12 5v14M5 12h14' },
+  { id: 'market', label: 'Market',  icon: 'M18 20V10M12 20V4M6 20v-6' },
+  { id: 'blog',   label: 'Blog',    icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+];
+
+// ── Pin Screen ────────────────────────────────────────────────────────────────
+function PinScreen({ onAuth }: { onAuth: () => void }) {
+  const [digits, setDigits] = useState<string[]>([]);
+  const [shake, setShake] = useState(false);
+
+  function press(d: string) {
+    if (digits.length >= 4 || shake) return;
+    const next = [...digits, d];
+    setDigits(next);
+    if (next.length === 4) {
+      setTimeout(() => {
+        if (next.join('') === ADMIN_PIN) {
+          onAuth();
+        } else {
+          setShake(true);
+          setTimeout(() => { setDigits([]); setShake(false); }, 700);
+        }
+      }, 150);
+    }
+  }
+
+  function erase() {
+    if (!shake) setDigits(d => d.slice(0, -1));
+  }
+
+  const PAD = ['1','2','3','4','5','6','7','8','9','','0','del'];
+
   return (
     <div style={{
-      background: '#fff', border: '1px solid var(--border)', borderRadius: 14,
-      padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 6,
+      position: 'fixed', inset: 0,
+      background: 'linear-gradient(145deg, #FFF8F3 0%, #FFEEDD 60%, #FFF4E8 100%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '24px 20px', fontFamily: 'Outfit, sans-serif',
     }}>
-      <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</p>
-      <p style={{ font: '700 26px Outfit,sans-serif', color: accent ? 'var(--orange)' : 'var(--text-1)', margin: 0 }}>{value}</p>
-      {sub && <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>{sub}</p>}
-    </div>
-  );
-}
+      {/* Logo mark */}
+      <div style={{ marginBottom: 36, textAlign: 'center' }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 16, background: '#F07828',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 12px', boxShadow: '0 6px 20px rgba(240,120,40,.30)',
+        }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <p style={{ font: '800 17px Outfit,sans-serif', color: '#1A1310', margin: '0 0 2px' }}>MyTinyverse</p>
+        <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>Admin Panel - Nairobi</p>
+      </div>
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 style={{ font: '700 16px Outfit,sans-serif', color: 'var(--text-1)', margin: '32px 0 14px', borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
-      {children}
-    </h2>
-  );
-}
+      {/* Card */}
+      <div style={{
+        background: '#fff', borderRadius: 24, padding: '36px 32px',
+        boxShadow: '0 4px 40px rgba(0,0,0,.08)', width: '100%', maxWidth: 300,
+      }}>
+        <p style={{ font: '600 13px Outfit,sans-serif', color: '#8B7355', textAlign: 'center', margin: '0 0 20px', letterSpacing: '.04em' }}>
+          ENTER PIN
+        </p>
 
-function BarChart({ data }: { data: { month: string; revenue: number }[] }) {
-  const max = Math.max(...data.map(d => d.revenue), 1);
-  const barW = 36;
-  const gap = 12;
-  const chartH = 100;
-  const totalW = data.length * (barW + gap) - gap;
+        {/* Dot indicators */}
+        <div style={{
+          display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 28,
+          animation: shake ? 'adminShake .6s ease' : undefined,
+        }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{
+              width: 14, height: 14, borderRadius: '50%',
+              transition: 'all .15s',
+              background: i < digits.length ? '#F07828' : '#EEE9E0',
+              boxShadow: i < digits.length ? '0 2px 8px rgba(240,120,40,.4)' : 'none',
+              transform: i < digits.length ? 'scale(1.1)' : 'scale(1)',
+            }}/>
+          ))}
+        </div>
 
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg width={Math.max(totalW, 300)} height={chartH + 32} style={{ display: 'block' }}>
-        {data.map((d, i) => {
-          const x = i * (barW + gap);
-          const barH = Math.max(4, Math.round((d.revenue / max) * chartH));
-          const y = chartH - barH;
-          return (
-            <g key={d.month}>
-              <rect x={x} y={y} width={barW} height={barH}
-                fill={barH > 4 ? 'var(--orange)' : '#e0e0e0'} rx={4}/>
-              {d.revenue > 0 && (
-                <text x={x + barW / 2} y={y - 4} textAnchor="middle"
-                  style={{ font: '500 9px Outfit,sans-serif', fill: 'var(--text-3)' }}>
-                  {d.revenue >= 1000 ? `${(d.revenue / 1000).toFixed(1)}k` : d.revenue}
-                </text>
-              )}
-              <text x={x + barW / 2} y={chartH + 18} textAnchor="middle"
-                style={{ font: '400 10px Outfit,sans-serif', fill: 'var(--text-3)' }}>
-                {fmtMonth(d.month)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+        {/* Number pad */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {PAD.map((k, idx) => {
+            if (k === '') return <div key={idx}/>;
+            const isDel = k === 'del';
+            return (
+              <button
+                key={k}
+                onClick={() => isDel ? erase() : press(k)}
+                style={{
+                  height: 58, border: isDel ? 'none' : '1.5px solid #EEE9E0',
+                  borderRadius: 14, background: isDel ? 'transparent' : '#FAFAF8',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  font: '500 20px Outfit,sans-serif', color: isDel ? '#8B7355' : '#1A1310',
+                  transition: 'background .1s, transform .08s', outline: 'none',
+                }}
+                onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(.94)'; }}
+                onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+              >
+                {isDel ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2zM18 9l-6 6M12 9l6 6"/>
+                  </svg>
+                ) : k}
+              </button>
+            );
+          })}
+        </div>
+
+        {shake && (
+          <p style={{ font: '500 13px Outfit,sans-serif', color: '#E53935', textAlign: 'center', margin: '16px 0 0' }}>
+            Incorrect PIN - try again
+          </p>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes adminShake {
+          0%,100%{transform:translateX(0)}
+          15%{transform:translateX(-10px)}
+          30%{transform:translateX(10px)}
+          45%{transform:translateX(-8px)}
+          60%{transform:translateX(8px)}
+          75%{transform:translateX(-4px)}
+          90%{transform:translateX(4px)}
+        }
+      `}</style>
     </div>
   );
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-
 export default function AdminPage() {
-  const [pin, setPin] = useState('');
   const [authed, setAuthed] = useState(false);
-  const [pinError, setPinError] = useState('');
-  const [view, setView] = useState<'dashboard' | 'moderation' | 'blog' | 'post' | 'reports'>('dashboard');
+  const [view, setView]     = useState<AdminView>('home');
 
-  // Dashboard state
-  const [stats, setStats] = useState<StatsData | null>(null);
+  // Stats
+  const [stats, setStats]           = useState<StatsData | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Moderation state
-  const [modTab, setModTab] = useState<'pending' | 'live' | 'rejected'>('pending');
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [modLoading, setModLoading] = useState(false);
+  // Moderation
+  const [modTab, setModTab]           = useState<ModTab>('pending');
+  const [listings, setListings]       = useState<Listing[]>([]);
+  const [modLoading, setModLoading]   = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // Blog state
-  const [blogArticles, setBlogArticles] = useState<Article[]>([]);
-  const [blogLoading, setBlogLoading] = useState(false);
+  // Blog
+  const [blogArticles, setBlogArticles]       = useState<Article[]>([]);
+  const [blogLoading, setBlogLoading]         = useState(false);
   const [blogActionLoading, setBlogActionLoading] = useState<string | null>(null);
   const [blogDeleteConfirm, setBlogDeleteConfirm] = useState<string | null>(null);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [isNewArticle, setIsNewArticle] = useState(false);
-  const [editorMode, setEditorMode] = useState<BlogEditorMode>('generate');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
-  // Editor form
+  const [editingArticle, setEditingArticle]   = useState<Article | null>(null);
+  const [isNewArticle, setIsNewArticle]       = useState(false);
+  const [editorMode, setEditorMode]           = useState<BlogEdMode>('generate');
+  const [saveStatus, setSaveStatus]           = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [form, setForm] = useState<Partial<Article & { tagsInput: string }>>({
     title: '', slug: '', excerpt: '', content: '', cover_image_url: '',
     meta_title: '', meta_description: '', tagsInput: '', author: 'MyTinyverse Team',
     reading_time_minutes: 5,
   });
-
-  // AI generate form
-  const [genTopic, setGenTopic] = useState('');
+  const [genTopic, setGenTopic]     = useState('');
   const [genKeywords, setGenKeywords] = useState('');
-  const [genTone, setGenTone] = useState<'friendly' | 'professional'>('friendly');
-  const [genLength, setGenLength] = useState<'short' | 'standard' | 'long'>('standard');
+  const [genTone, setGenTone]       = useState<'friendly'|'professional'>('friendly');
+  const [genLength, setGenLength]   = useState<'short'|'standard'|'long'>('standard');
   const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState('');
+  const [genError, setGenError]     = useState('');
 
-  // Post-on-behalf state
+  // Post on behalf
   const [postForm, setPostForm] = useState({
     seller_name: '', seller_phone: '', seller_whatsapp: '',
     title: '', category: '', age_range: '', price: '', is_donation: false,
     condition: '', description: '', location: '', admin_note: '',
   });
-  const [postPhotos, setPostPhotos] = useState<File[]>([]);
+  const [postPhotos, setPostPhotos]     = useState<File[]>([]);
   const [postPreviews, setPostPreviews] = useState<string[]>([]);
-  const [postErrors, setPostErrors] = useState<Record<string, string>>({});
+  const [postErrors, setPostErrors]     = useState<Record<string,string>>({});
   const [postSubmitting, setPostSubmitting] = useState(false);
-  const [postSuccess, setPostSuccess] = useState<{ id: string; title: string } | null>(null);
+  const [postSuccess, setPostSuccess]   = useState<{ id: string; title: string } | null>(null);
   const postFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Auth ──
-  function handlePin(e: React.FormEvent) {
-    e.preventDefault();
-    if (pin === ADMIN_PIN) { setAuthed(true); setPinError(''); }
-    else { setPinError('Incorrect PIN'); }
-  }
+  // Market sub-tab
+  const [marketTab, setMarketTab] = useState<'categories'|'searches'|'revenue'|'expiring'>('categories');
 
-  // ── Dashboard ──
+  // ── API handlers (unchanged from original) ────────────────────────────────
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -244,7 +297,6 @@ export default function AdminPage() {
     } catch { /* silent */ } finally { setStatsLoading(false); }
   }, []);
 
-  // ── Moderation ──
   const fetchListings = useCallback(async (status: string) => {
     setModLoading(true);
     try {
@@ -254,7 +306,6 @@ export default function AdminPage() {
     } catch { setListings([]); } finally { setModLoading(false); }
   }, []);
 
-  // ── Blog ──
   const fetchArticles = useCallback(async () => {
     setBlogLoading(true);
     try {
@@ -265,18 +316,17 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (authed && (view === 'dashboard' || view === 'reports')) fetchStats();
+    if (authed && (view === 'home' || view === 'market')) fetchStats();
   }, [authed, view, fetchStats]);
 
   useEffect(() => {
-    if (authed && view === 'moderation') fetchListings(modTab);
+    if (authed && view === 'queue') fetchListings(modTab);
   }, [authed, view, modTab, fetchListings]);
 
   useEffect(() => {
     if (authed && view === 'blog' && !editingArticle && !isNewArticle) fetchArticles();
   }, [authed, view, editingArticle, isNewArticle, fetchArticles]);
 
-  // ── Moderation actions ──
   async function updateStatus(id: string, status: 'live' | 'rejected') {
     setActionLoading(id + status);
     try {
@@ -286,6 +336,7 @@ export default function AdminPage() {
         body: JSON.stringify({ id, status }),
       });
       await fetchListings(modTab);
+      if (view === 'home') fetchStats();
     } finally { setActionLoading(null); }
   }
 
@@ -302,40 +353,23 @@ export default function AdminPage() {
     } finally { setActionLoading(null); }
   }
 
-  // ── Blog actions ──
   function openNewArticle() {
-    setForm({ title: '', slug: '', excerpt: '', content: '', cover_image_url: '', meta_title: '', meta_description: '', tagsInput: '', author: 'MyTinyverse Team', reading_time_minutes: 5 });
-    setEditingArticle(null);
-    setIsNewArticle(true);
-    setEditorMode('generate');
-    setGenTopic('');
-    setGenKeywords('');
-    setGenError('');
-    setSaveStatus('idle');
+    setForm({ title:'', slug:'', excerpt:'', content:'', cover_image_url:'', meta_title:'', meta_description:'', tagsInput:'', author:'MyTinyverse Team', reading_time_minutes:5 });
+    setEditingArticle(null); setIsNewArticle(true); setEditorMode('generate');
+    setGenTopic(''); setGenKeywords(''); setGenError(''); setSaveStatus('idle');
   }
 
   function openEditArticle(article: Article) {
-    setForm({
-      ...article,
-      tagsInput: (article.tags || []).join(', '),
-    });
-    setEditingArticle(article);
-    setIsNewArticle(false);
-    setEditorMode('manual');
-    setGenError('');
-    setSaveStatus('idle');
+    setForm({ ...article, tagsInput: (article.tags || []).join(', ') });
+    setEditingArticle(article); setIsNewArticle(false); setEditorMode('manual');
+    setGenError(''); setSaveStatus('idle');
   }
 
-  function closeEditor() {
-    setEditingArticle(null);
-    setIsNewArticle(false);
-    fetchArticles();
-  }
+  function closeEditor() { setEditingArticle(null); setIsNewArticle(false); fetchArticles(); }
 
   async function generateArticle() {
     if (!genTopic.trim()) { setGenError('Please enter a topic'); return; }
-    setGenerating(true);
-    setGenError('');
+    setGenerating(true); setGenError('');
     try {
       const res = await fetch('/api/admin/articles/generate', {
         method: 'POST',
@@ -346,23 +380,15 @@ export default function AdminPage() {
       if (data.error) { setGenError(data.error); return; }
       const a = data.article;
       setForm({
-        title: a.title || '',
-        slug: a.slug || '',
-        excerpt: a.excerpt || '',
-        content: a.content || '',
-        cover_image_url: '',
-        meta_title: a.meta_title || '',
-        meta_description: a.meta_description || '',
-        tagsInput: (a.tags || []).join(', '),
-        author: a.author || 'MyTinyverse Team',
-        reading_time_minutes: a.reading_time_minutes || 5,
+        title: a.title||'', slug: a.slug||'', excerpt: a.excerpt||'', content: a.content||'',
+        cover_image_url: '', meta_title: a.meta_title||'', meta_description: a.meta_description||'',
+        tagsInput: (a.tags||[]).join(', '), author: a.author||'MyTinyverse Team',
+        reading_time_minutes: a.reading_time_minutes||5,
       });
       setEditorMode('manual');
     } catch (err) {
       setGenError((err as Error).message || 'Generation failed');
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
   }
 
   async function saveArticle() {
@@ -370,18 +396,12 @@ export default function AdminPage() {
     setSaveStatus('saving');
     try {
       const payload = {
-        title: form.title,
-        slug: form.slug,
-        excerpt: form.excerpt,
-        content: form.content,
-        cover_image_url: form.cover_image_url,
-        meta_title: form.meta_title,
+        title: form.title, slug: form.slug, excerpt: form.excerpt, content: form.content,
+        cover_image_url: form.cover_image_url, meta_title: form.meta_title,
         meta_description: form.meta_description,
-        tags: (form.tagsInput || '').split(',').map(t => t.trim()).filter(Boolean),
-        author: form.author,
-        reading_time_minutes: Number(form.reading_time_minutes) || 5,
+        tags: (form.tagsInput||'').split(',').map(t=>t.trim()).filter(Boolean),
+        author: form.author, reading_time_minutes: Number(form.reading_time_minutes)||5,
       };
-
       if (editingArticle) {
         const res = await fetch('/api/admin/articles', {
           method: 'PATCH',
@@ -391,7 +411,7 @@ export default function AdminPage() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         setEditingArticle(data.article);
-        setForm(prev => ({ ...prev, ...data.article, tagsInput: (data.article.tags || []).join(', ') }));
+        setForm(prev => ({ ...prev, ...data.article, tagsInput: (data.article.tags||[]).join(', ') }));
       } else {
         const res = await fetch('/api/admin/articles', {
           method: 'POST',
@@ -402,7 +422,7 @@ export default function AdminPage() {
         if (data.error) throw new Error(data.error);
         setEditingArticle(data.article);
         setIsNewArticle(false);
-        setForm(prev => ({ ...prev, ...data.article, tagsInput: (data.article.tags || []).join(', ') }));
+        setForm(prev => ({ ...prev, ...data.article, tagsInput: (data.article.tags||[]).join(', ') }));
       }
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -412,7 +432,7 @@ export default function AdminPage() {
     }
   }
 
-  async function articleAction(id: string, action: 'submit' | 'publish' | 'unpublish') {
+  async function articleAction(id: string, action: 'submit'|'publish'|'unpublish') {
     setBlogActionLoading(id + action);
     try {
       await fetch('/api/admin/articles', {
@@ -422,10 +442,9 @@ export default function AdminPage() {
       });
       await fetchArticles();
       if (editingArticle?.id === id) {
-        // Refresh editing article status
         const res = await fetch('/api/admin/articles', { headers: { 'x-admin-pin': ADMIN_PIN } });
         const data = await res.json();
-        const updated = (data.articles || []).find((a: Article) => a.id === id);
+        const updated = (data.articles||[]).find((a:Article) => a.id === id);
         if (updated) setEditingArticle(updated);
       }
     } finally { setBlogActionLoading(null); }
@@ -445,20 +464,18 @@ export default function AdminPage() {
     } finally { setBlogActionLoading(null); }
   }
 
-  // ── Post on behalf ──
   async function submitOnBehalf() {
-    const errors: Record<string, string> = {};
-    if (!postForm.seller_name.trim()) errors.seller_name = 'Required';
+    const errors: Record<string,string> = {};
+    if (!postForm.seller_name.trim())  errors.seller_name = 'Required';
     if (!postForm.seller_phone.trim()) errors.seller_phone = 'Required';
-    if (!postForm.title.trim()) errors.title = 'Required';
-    if (!postForm.category) errors.category = 'Select a category';
-    if (!postForm.condition) errors.condition = 'Select a condition';
-    if (!postForm.location) errors.location = 'Select a neighbourhood';
+    if (!postForm.title.trim())        errors.title = 'Required';
+    if (!postForm.category)            errors.category = 'Select a category';
+    if (!postForm.condition)           errors.condition = 'Select a condition';
+    if (!postForm.location)            errors.location = 'Select a neighbourhood';
     if (!postForm.is_donation && !postForm.price) errors.price = 'Enter a price or mark as free';
     if (Object.keys(errors).length > 0) { setPostErrors(errors); return; }
 
-    setPostSubmitting(true);
-    setPostErrors({});
+    setPostSubmitting(true); setPostErrors({});
     try {
       const fd = new FormData();
       fd.append('seller_name', postForm.seller_name.trim());
@@ -476,1197 +493,1180 @@ export default function AdminPage() {
       postPhotos.forEach((f, i) => fd.append(`photo${i}`, f));
 
       const res = await fetch('/api/admin/create-listing', {
-        method: 'POST',
-        headers: { 'x-admin-pin': ADMIN_PIN },
-        body: fd,
+        method: 'POST', headers: { 'x-admin-pin': ADMIN_PIN }, body: fd,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to post listing');
-
       setPostSuccess(data.listing);
-      setPostForm({ seller_name: '', seller_phone: '', seller_whatsapp: '', title: '', category: '', age_range: '', price: '', is_donation: false, condition: '', description: '', location: '', admin_note: '' });
-      setPostPhotos([]);
-      setPostPreviews([]);
+      setPostForm({ seller_name:'', seller_phone:'', seller_whatsapp:'', title:'', category:'', age_range:'', price:'', is_donation:false, condition:'', description:'', location:'', admin_note:'' });
+      setPostPhotos([]); setPostPreviews([]);
     } catch (err) {
       setPostErrors({ _form: err instanceof Error ? err.message : 'Something went wrong' });
-    } finally {
-      setPostSubmitting(false);
-    }
+    } finally { setPostSubmitting(false); }
   }
 
-  // ── PIN gate ──
-  if (!authed) {
+  // ── PIN gate ──────────────────────────────────────────────────────────────
+  if (!authed) return <PinScreen onAuth={() => setAuthed(true)} />;
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const pendingCount = stats?.tiles?.pending_review ?? 0;
+
+  // ── Shared style helpers ──────────────────────────────────────────────────
+  const S = {
+    card: { background: '#fff', borderRadius: 14, border: '1px solid #EEE9E0', overflow: 'hidden' } as React.CSSProperties,
+    input: { width: '100%', padding: '10px 12px', border: '1.5px solid #E8E3DB', borderRadius: 10, font: '400 14px Outfit,sans-serif', color: '#1A1310', background: '#fff', boxSizing: 'border-box', outline: 'none' } as React.CSSProperties,
+    label: { font: '600 11px Outfit,sans-serif', color: '#8B7355', textTransform: 'uppercase' as const, letterSpacing: '.07em', marginBottom: 5, display: 'block' },
+    section: { font: '700 15px Outfit,sans-serif', color: '#1A1310', margin: '0 0 14px', paddingBottom: 10, borderBottom: '1px solid #EEE9E0' } as React.CSSProperties,
+  };
+
+  function subTabBtn(active: boolean, label: string, onClick: () => void) {
     return (
-      <>
-        <Nav/>
-        <div className="container" style={{ padding: '80px 0', maxWidth: 360, textAlign: 'center' }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FFF3E0', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-          </div>
-          <h1 style={{ font: '700 22px Outfit,sans-serif', margin: '0 0 8px' }}>Admin Access</h1>
-          <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 28px' }}>Enter your admin PIN to continue</p>
-          <form onSubmit={handlePin}>
-            <div className="field" style={{ textAlign: 'left' }}>
-              <label>Admin PIN</label>
-              <input type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="****" maxLength={8} autoFocus/>
-              {pinError && <span style={{ color: '#e53935', font: '400 12px Outfit,sans-serif' }}>{pinError}</span>}
-            </div>
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }}>Unlock</button>
-          </form>
-        </div>
-      </>
+      <button onClick={onClick} style={{
+        padding: '7px 16px', border: 'none', borderRadius: 20,
+        background: active ? '#F07828' : 'transparent',
+        color: active ? '#fff' : '#5C4B3A',
+        font: `${active ? '600' : '400'} 13px Outfit,sans-serif`,
+        cursor: 'pointer', transition: 'all .15s',
+      }}>
+        {label}
+      </button>
     );
   }
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer',
-    font: `${active ? '600' : '400'} 14px Outfit,sans-serif`,
-    color: active ? 'var(--orange)' : 'var(--text-3)',
-    borderBottom: active ? '2px solid var(--orange)' : '2px solid transparent',
-    marginBottom: -1,
-  });
+  // ── Signal helper for category health ────────────────────────────────────
+  function signal(cr: number, views: number) {
+    if (cr >= 15) return { label: 'Hot',  bg: '#E8F5E9', fg: '#2E7D32' };
+    if (cr >= 7)  return { label: 'Good', bg: '#FFF8E1', fg: '#F57F17' };
+    if (views > 5) return { label: 'Slow', bg: '#FFF3E0', fg: '#E65100' };
+    return { label: 'New', bg: '#f5f4f2', fg: '#888' };
+  }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8,
-    font: '400 14px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', boxSizing: 'border-box',
-    outline: 'none',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    font: '600 12px Outfit,sans-serif', color: 'var(--text-3)', textTransform: 'uppercase',
-    letterSpacing: '.06em', marginBottom: 5, display: 'block',
-  };
-
-  return (
-    <>
-      <Nav/>
-      <div className="container" style={{ padding: '24px 0 80px' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-          <h1 style={{ font: '700 22px Outfit,sans-serif', margin: 0 }}>Admin Dashboard</h1>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <a href="https://wa.me/254790784084" target="_blank" rel="noopener noreferrer" className="btn btn-green btn-sm">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              CRM
-            </a>
+  // ========================================================================
+  // VIEW: HOME (Command Center)
+  // ========================================================================
+  function renderHome() {
+    return (
+      <div>
+        {/* Priority banner */}
+        {pendingCount > 0 && (
+          <div style={{
+            background: 'linear-gradient(90deg, #FFF4EE 0%, #FFEEDD 100%)',
+            border: '1.5px solid #F07828', borderRadius: 14,
+            padding: '14px 18px', marginBottom: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F07828', flexShrink: 0, boxShadow: '0 0 0 3px rgba(240,120,40,.2)' }}/>
+              <p style={{ font: '600 14px Outfit,sans-serif', color: '#B85C1A', margin: 0 }}>
+                {pendingCount} listing{pendingCount > 1 ? 's' : ''} waiting for review
+              </p>
+            </div>
             <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => {
-                if (view === 'dashboard' || view === 'reports') fetchStats();
-                else if (view === 'moderation') fetchListings(modTab);
-                else if (view === 'blog') fetchArticles();
-              }}
-            >
-              Refresh
+              onClick={() => setView('queue')}
+              style={{ padding: '8px 18px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
+              Review now
+            </button>
+          </div>
+        )}
+
+        {/* KPI tiles */}
+        {statsLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #EEE9E0', borderRadius: 14, padding: '20px 22px', height: 90 }}>
+                <div style={{ width: '60%', height: 12, background: '#f5f4f2', borderRadius: 6, marginBottom: 10 }}/>
+                <div style={{ width: '40%', height: 24, background: '#f5f4f2', borderRadius: 6 }}/>
+              </div>
+            ))}
+          </div>
+        ) : stats ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+            {[
+              { label: 'Total Revenue', value: fmtKES(stats.tiles.total_revenue), sub: `KES ${(stats.tiles.total_revenue / Math.max(stats.tiles.total_listings||1, 1)).toFixed(0)} avg`, accent: false },
+              { label: 'Live Listings', value: stats.tiles.live_listings, sub: `${stats.tiles.approval_rate?.toFixed(0)||0}% approval rate`, accent: true },
+              { label: 'Expiring Soon', value: stats.expiring_soon?.length || 0, sub: 'Within 7 days', accent: (stats.expiring_soon?.length||0) > 0 },
+              { label: 'Searches (30d)', value: stats.top_searches?.length || 0, sub: `${stats.demand_gaps?.length||0} demand gaps`, accent: false },
+            ].map(tile => (
+              <div key={tile.label} style={{
+                ...S.card, padding: '18px 20px',
+              }}>
+                <p style={{ font: '500 11px Outfit,sans-serif', color: '#8B7355', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.07em' }}>{tile.label}</p>
+                <p style={{ font: '700 26px Outfit,sans-serif', color: tile.accent ? '#F07828' : '#1A1310', margin: '0 0 4px' }}>{tile.value}</p>
+                <p style={{ font: '400 11px Outfit,sans-serif', color: '#B09070', margin: 0 }}>{tile.sub}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Quick actions */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
+          <button onClick={() => setView('queue')} style={{
+            flex: 1, minWidth: 120, padding: '12px 16px', background: '#F07828', color: '#fff',
+            border: 'none', borderRadius: 12, font: '600 14px Outfit,sans-serif', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            Review Queue {pendingCount > 0 ? `(${pendingCount})` : ''}
+          </button>
+          <button onClick={() => { setView('post'); setPostSuccess(null); }} style={{
+            flex: 1, minWidth: 120, padding: '12px 16px', background: '#7DC243', color: '#fff',
+            border: 'none', borderRadius: 12, font: '600 14px Outfit,sans-serif', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Post Listing
+          </button>
+          <a href={`https://wa.me/${WA_ADMIN}`} target="_blank" rel="noopener noreferrer" style={{
+            flex: 1, minWidth: 120, padding: '12px 16px', background: '#25D366', color: '#fff',
+            border: 'none', borderRadius: 12, font: '600 14px Outfit,sans-serif', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d={WA_PATH}/></svg>
+            Open CRM
+          </a>
+        </div>
+
+        {/* Recent submissions */}
+        {stats?.recent_pending && stats.recent_pending.length > 0 && (
+          <>
+            <h3 style={S.section}>Recent Submissions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, ...S.card }}>
+              {stats.recent_pending.slice(0, 6).map((l, i) => (
+                <div key={l.id || i} style={{
+                  padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+                  borderBottom: i < Math.min(stats.recent_pending.length, 6) - 1 ? '1px solid #F5F0E8' : 'none',
+                }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 10, background: '#FFF4EE', flexShrink: 0, overflow: 'hidden' }}>
+                    {l.images?.[0] ? (
+                      <img src={l.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9l4-4 4 4 4-4 4 4"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ font: '600 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title || 'Untitled'}</p>
+                    <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>{categoryLabel(l.category||'')} - {l.location || 'Unknown area'}</p>
+                  </div>
+                  <div style={{ font: '600 13px Outfit,sans-serif', color: '#F07828', flexShrink: 0 }}>
+                    {(l.price ?? 1) === 0 ? 'Free' : fmtKES(l.price || 0)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setView('queue')} style={{
+              width: '100%', padding: '12px', background: '#FAFAF8', border: '1.5px solid #EEE9E0',
+              borderRadius: 12, marginTop: 10, font: '500 13px Outfit,sans-serif', color: '#5C4B3A',
+              cursor: 'pointer',
+            }}>
+              View all pending - {pendingCount} total
+            </button>
+          </>
+        )}
+
+        {/* Live site link */}
+        <div style={{ marginTop: 24, padding: '14px 18px', background: '#F7F4EF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ font: '400 13px Outfit,sans-serif', color: '#5C4B3A', margin: 0 }}>View the live marketplace</p>
+          <Link href="/" target="_blank" style={{ font: '600 13px Outfit,sans-serif', color: '#F07828', textDecoration: 'none' }}>Open site</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // VIEW: QUEUE (Moderation)
+  // ========================================================================
+  function renderQueue() {
+    const tabBg = (t: ModTab) => modTab === t;
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#F7F4EF', borderRadius: 12, padding: 5 }}>
+          {(['pending','live','rejected'] as ModTab[]).map(t => (
+            <button key={t} onClick={() => setModTab(t)} style={{
+              flex: 1, padding: '8px 12px', border: 'none', borderRadius: 8,
+              background: tabBg(t) ? '#fff' : 'transparent',
+              color: tabBg(t) ? '#F07828' : '#5C4B3A',
+              font: `${tabBg(t) ? '600' : '400'} 13px Outfit,sans-serif`,
+              cursor: 'pointer', transition: 'all .15s',
+              boxShadow: tabBg(t) ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+              textTransform: 'capitalize',
+            }}>
+              {t}{t === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
+            </button>
+          ))}
+        </div>
+
+        {modLoading && (
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ width: 36, height: 36, border: '3px solid #F07828', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite' }}/>
+          </div>
+        )}
+
+        {!modLoading && listings.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 60, color: '#8B7355' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}>
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4"/>
+            </svg>
+            <p style={{ font: '500 15px Outfit,sans-serif', margin: 0 }}>No {modTab} listings</p>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {listings.map(listing => {
+            const isLoading = actionLoading?.startsWith(listing.id);
+            const waNum = listing.seller_whatsapp || listing.seller_phone || '';
+            const waMsg = `Hi ${listing.seller_name||'there'}, this is about your listing "${listing.title||''}" on MyTinyverse.`;
+            const tierCost = listing.fee_tier === 'starter' ? 99 : listing.fee_tier === 'standard' ? 299 : listing.fee_tier === 'premium' ? 499 : 0;
+
+            return (
+              <div key={listing.id} style={{ ...S.card }}>
+                {/* Top: photo + details */}
+                <div style={{ padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  {/* Thumbnail */}
+                  <div style={{ width: 72, height: 72, borderRadius: 10, background: '#FFF4EE', flexShrink: 0, overflow: 'hidden' }}>
+                    {listing.images?.[0] ? (
+                      <img src={listing.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ font: '600 15px Outfit,sans-serif', color: '#1A1310', margin: '0 0 4px', lineHeight: 1.3 }}>{listing.title}</p>
+                    <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: '0 0 6px' }}>
+                      {categoryLabel(listing.category||'')} - {listing.condition?.replace('_',' ')} - {listing.location}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ font: '700 15px Outfit,sans-serif', color: listing.price === 0 ? '#7DC243' : '#F07828' }}>
+                        {listing.price === 0 ? 'Free donation' : fmtKES(listing.price||0)}
+                      </span>
+                      {listing.fee_tier && (
+                        <span style={{ font: '500 11px Outfit,sans-serif', color: '#8B7355', background: '#F7F4EF', padding: '2px 8px', borderRadius: 20 }}>
+                          {listing.fee_tier}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* M-Pesa verification strip */}
+                {modTab === 'pending' && listing.mpesa_code && (
+                  <div style={{ margin: '0 18px 14px', background: '#FFF8E1', border: '1px solid #FFECB3', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ font: '500 10px Outfit,sans-serif', color: '#8B7355', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>M-Pesa Code</p>
+                        <p style={{ font: '700 16px monospace', color: '#1A1310', margin: 0, letterSpacing: '.1em' }}>{listing.mpesa_code}</p>
+                      </div>
+                      {tierCost > 0 && (
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ font: '500 10px Outfit,sans-serif', color: '#8B7355', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Expected</p>
+                          <p style={{ font: '700 16px Outfit,sans-serif', color: '#F57F17', margin: 0 }}>KES {tierCost}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Seller + actions */}
+                <div style={{ padding: '12px 18px', background: '#FAFAF8', borderTop: '1px solid #F5F0E8', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 120 }}>
+                    <p style={{ font: '500 13px Outfit,sans-serif', color: '#1A1310', margin: 0 }}>{listing.seller_name || 'Unknown seller'}</p>
+                    <p style={{ font: '400 11px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>{listing.seller_phone || ''}</p>
+                  </div>
+
+                  {/* WA quick-dial */}
+                  {waNum && (
+                    <a
+                      href={`https://wa.me/${waNum.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(waMsg)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 8, textDecoration: 'none', flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+                      <span style={{ font: '600 12px Outfit,sans-serif', color: '#1B7A3C' }}>Chat</span>
+                    </a>
+                  )}
+
+                  {/* Moderation actions */}
+                  {modTab === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => updateStatus(listing.id, 'live')}
+                        disabled={!!isLoading}
+                        style={{ padding: '7px 14px', background: '#7DC243', color: '#fff', border: 'none', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', opacity: isLoading ? .6 : 1 }}>
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => updateStatus(listing.id, 'rejected')}
+                        disabled={!!isLoading}
+                        style={{ padding: '7px 14px', background: '#FFF3E0', color: '#E65100', border: '1px solid #FFCC80', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', opacity: isLoading ? .6 : 1 }}>
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {modTab === 'live' && (
+                    <button
+                      onClick={() => updateStatus(listing.id, 'rejected')}
+                      disabled={!!isLoading}
+                      style={{ padding: '7px 14px', background: '#FFF3E0', color: '#E65100', border: '1px solid #FFCC80', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', opacity: isLoading ? .6 : 1 }}>
+                      Remove
+                    </button>
+                  )}
+                  {modTab === 'rejected' && (
+                    <button
+                      onClick={() => updateStatus(listing.id, 'live')}
+                      disabled={!!isLoading}
+                      style={{ padding: '7px 14px', background: '#E8F5E9', color: '#2E7D32', border: '1px solid #A5D6A7', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', opacity: isLoading ? .6 : 1 }}>
+                      Re-approve
+                    </button>
+                  )}
+                  {deleteConfirm === listing.id ? (
+                    <>
+                      <button onClick={() => deleteListing(listing.id)} style={{ padding: '7px 12px', background: '#E53935', color: '#fff', border: 'none', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer' }}>Confirm</button>
+                      <button onClick={() => setDeleteConfirm(null)} style={{ padding: '7px 10px', background: 'none', border: 'none', font: '400 12px Outfit,sans-serif', color: '#8B7355', cursor: 'pointer' }}>Cancel</button>
+                    </>
+                  ) : (
+                    <button onClick={() => setDeleteConfirm(listing.id)} style={{ padding: '7px 10px', background: 'none', border: 'none', font: '400 12px Outfit,sans-serif', color: '#B09070', cursor: 'pointer' }}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // VIEW: POST (Post on behalf)
+  // ========================================================================
+  function renderPost() {
+    if (postSuccess) {
+      return (
+        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+          <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#E8F5E9', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <h2 style={{ font: '700 20px Outfit,sans-serif', color: '#1A1310', margin: '0 0 8px' }}>Listing created</h2>
+          <p style={{ font: '400 14px Outfit,sans-serif', color: '#8B7355', margin: '0 0 28px' }}>{postSuccess.title}</p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => { setPostSuccess(null); }} style={{ padding: '10px 24px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 14px Outfit,sans-serif', cursor: 'pointer' }}>
+              Post another
+            </button>
+            <button onClick={() => setView('queue')} style={{ padding: '10px 24px', background: '#F7F4EF', color: '#5C4B3A', border: '1.5px solid #EEE9E0', borderRadius: 20, font: '600 14px Outfit,sans-serif', cursor: 'pointer' }}>
+              Go to queue
             </button>
           </div>
         </div>
+      );
+    }
 
-        {/* View tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
-          <button style={tabStyle(view === 'dashboard')} onClick={() => setView('dashboard')}>Dashboard</button>
-          <button style={tabStyle(view === 'moderation')} onClick={() => setView('moderation')}>
-            Moderation {stats && stats.tiles.pending_review > 0 ? `(${stats.tiles.pending_review})` : ''}
-          </button>
-          <button style={tabStyle(view === 'post')} onClick={() => { setView('post'); setPostSuccess(null); }}>
-            Post Listing
-          </button>
-          <button style={tabStyle(view === 'reports')} onClick={() => setView('reports')}>
-            Reports
-          </button>
-          <button style={tabStyle(view === 'blog')} onClick={() => { setView('blog'); setEditingArticle(null); setIsNewArticle(false); }}>
-            Blog
+    function pf<K extends keyof typeof postForm>(k: K, v: (typeof postForm)[K]) {
+      setPostForm(prev => ({ ...prev, [k]: v }));
+      if (postErrors[k as string]) setPostErrors(prev => { const n={...prev}; delete n[k as string]; return n; });
+    }
+
+    const fErr = (k: string) => postErrors[k] ? (
+      <span style={{ font: '400 11px Outfit,sans-serif', color: '#E53935', marginTop: 3, display: 'block' }}>{postErrors[k]}</span>
+    ) : null;
+
+    return (
+      <div>
+        <h3 style={S.section}>Post Listing on Behalf of Seller</h3>
+
+        {postErrors._form && (
+          <div style={{ background: '#FEECEC', border: '1px solid #FFCDD2', borderRadius: 10, padding: '12px 16px', marginBottom: 20, font: '400 13px Outfit,sans-serif', color: '#B71C1C' }}>
+            {postErrors._form}
+          </div>
+        )}
+
+        {/* Seller info */}
+        <div style={{ ...S.card, padding: '18px', marginBottom: 16 }}>
+          <p style={{ font: '600 13px Outfit,sans-serif', color: '#1A1310', margin: '0 0 14px' }}>Seller Details</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              <label style={S.label}>Name *</label>
+              <input style={{ ...S.input, borderColor: postErrors.seller_name ? '#E53935' : '#E8E3DB' }}
+                value={postForm.seller_name} onChange={e => pf('seller_name', e.target.value)} placeholder="Parent name"/>
+              {fErr('seller_name')}
+            </div>
+            <div>
+              <label style={S.label}>Phone *</label>
+              <input style={{ ...S.input, borderColor: postErrors.seller_phone ? '#E53935' : '#E8E3DB' }}
+                value={postForm.seller_phone} onChange={e => pf('seller_phone', e.target.value)} placeholder="0712 345 678"/>
+              {fErr('seller_phone')}
+            </div>
+            <div>
+              <label style={S.label}>WhatsApp (if different)</label>
+              <input style={S.input} value={postForm.seller_whatsapp} onChange={e => pf('seller_whatsapp', e.target.value)} placeholder="0712 345 678"/>
+            </div>
+          </div>
+        </div>
+
+        {/* Item info */}
+        <div style={{ ...S.card, padding: '18px', marginBottom: 16 }}>
+          <p style={{ font: '600 13px Outfit,sans-serif', color: '#1A1310', margin: '0 0 14px' }}>Item Details</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={S.label}>Title *</label>
+              <input style={{ ...S.input, borderColor: postErrors.title ? '#E53935' : '#E8E3DB' }}
+                value={postForm.title} onChange={e => pf('title', e.target.value)} placeholder="e.g. Thule Sport stroller, great condition"/>
+              {fErr('title')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              <div>
+                <label style={S.label}>Category *</label>
+                <select style={{ ...S.input, borderColor: postErrors.category ? '#E53935' : '#E8E3DB' }}
+                  value={postForm.category} onChange={e => pf('category', e.target.value)}>
+                  <option value="">Select...</option>
+                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+                {fErr('category')}
+              </div>
+              <div>
+                <label style={S.label}>Age range</label>
+                <select style={S.input} value={postForm.age_range} onChange={e => pf('age_range', e.target.value)}>
+                  <option value="">Any age</option>
+                  {AGE_RANGES.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Condition *</label>
+                <select style={{ ...S.input, borderColor: postErrors.condition ? '#E53935' : '#E8E3DB' }}
+                  value={postForm.condition} onChange={e => pf('condition', e.target.value)}>
+                  <option value="">Select...</option>
+                  {CONDITIONS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+                {fErr('condition')}
+              </div>
+              <div>
+                <label style={S.label}>Neighbourhood *</label>
+                <select style={{ ...S.input, borderColor: postErrors.location ? '#E53935' : '#E8E3DB' }}
+                  value={postForm.location} onChange={e => pf('location', e.target.value)}>
+                  <option value="">Select...</option>
+                  {NAIROBI_HOODS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                {fErr('location')}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+              <div>
+                <label style={S.label}>Price (KES) *</label>
+                <input style={{ ...S.input, borderColor: postErrors.price ? '#E53935' : '#E8E3DB' }}
+                  type="number" min={0} value={postForm.price} onChange={e => pf('price', e.target.value)}
+                  disabled={postForm.is_donation} placeholder="e.g. 3500"/>
+                {fErr('price')}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 10 }}>
+                <input type="checkbox" checked={postForm.is_donation} onChange={e => pf('is_donation', e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: '#7DC243' }}/>
+                <span style={{ font: '500 13px Outfit,sans-serif', color: '#1A1310' }}>Free / Donation</span>
+              </label>
+            </div>
+            <div>
+              <label style={S.label}>Description</label>
+              <textarea style={{ ...S.input, minHeight: 80, resize: 'vertical' }}
+                value={postForm.description} onChange={e => pf('description', e.target.value)}
+                placeholder="Condition details, what's included, any defects..."/>
+            </div>
+          </div>
+        </div>
+
+        {/* Photos */}
+        <div style={{ ...S.card, padding: '18px', marginBottom: 16 }}>
+          <p style={{ font: '600 13px Outfit,sans-serif', color: '#1A1310', margin: '0 0 14px' }}>Photos</p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            {postPreviews.map((p, i) => (
+              <div key={i} style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden' }}>
+                <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                <button onClick={() => {
+                  setPostPhotos(arr => arr.filter((_,j) => j !== i));
+                  setPostPreviews(arr => arr.filter((_,j) => j !== i));
+                }} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, border: 'none', borderRadius: '50%', background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+              </div>
+            ))}
+            {postPhotos.length < 5 && (
+              <button onClick={() => postFileRef.current?.click()} style={{
+                width: 72, height: 72, border: '2px dashed #C8B89A', borderRadius: 10,
+                background: '#FAFAF8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span style={{ font: '400 10px Outfit,sans-serif', color: '#B09070' }}>Add</span>
+              </button>
+            )}
+            <input ref={postFileRef} type="file" accept="image/*" multiple hidden onChange={e => {
+              const files = Array.from(e.target.files || []).slice(0, 5 - postPhotos.length);
+              setPostPhotos(p => [...p, ...files]);
+              files.forEach(f => {
+                const r = new FileReader();
+                r.onload = ev => setPostPreviews(p => [...p, ev.target?.result as string]);
+                r.readAsDataURL(f);
+              });
+              e.target.value = '';
+            }}/>
+          </div>
+        </div>
+
+        {/* Admin note */}
+        <div style={{ ...S.card, padding: '18px', marginBottom: 20 }}>
+          <label style={S.label}>Admin Note (internal only)</label>
+          <input style={S.input} value={postForm.admin_note} onChange={e => pf('admin_note', e.target.value)} placeholder="e.g. Received via WhatsApp, photos sent by seller"/>
+        </div>
+
+        <button
+          onClick={submitOnBehalf}
+          disabled={postSubmitting}
+          style={{
+            width: '100%', padding: '14px', background: postSubmitting ? '#B09070' : '#F07828',
+            color: '#fff', border: 'none', borderRadius: 12, font: '700 15px Outfit,sans-serif',
+            cursor: postSubmitting ? 'not-allowed' : 'pointer', transition: 'background .15s',
+          }}>
+          {postSubmitting ? 'Posting...' : 'Post Listing'}
+        </button>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // VIEW: MARKET (Intelligence)
+  // ========================================================================
+  function renderMarket() {
+    return (
+      <div>
+        {/* Sub-tabs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#F7F4EF', borderRadius: 12, padding: 5, overflowX: 'auto' }}>
+          {(['categories','searches','revenue','expiring'] as const).map(t => (
+            subTabBtn(marketTab === t, t.charAt(0).toUpperCase() + t.slice(1), () => setMarketTab(t))
+          ))}
+        </div>
+
+        {statsLoading && (
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ width: 36, height: 36, border: '3px solid #F07828', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite' }}/>
+          </div>
+        )}
+
+        {!statsLoading && stats && (
+          <>
+            {/* Categories tab */}
+            {marketTab === 'categories' && (
+              <div>
+                <h3 style={S.section}>Category Health</h3>
+                <div style={{ overflowX: 'auto', ...S.card }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 13px Outfit,sans-serif' }}>
+                    <thead>
+                      <tr style={{ background: '#FAFAF8' }}>
+                        {['Category','Live','Views','WA Clicks','Click Rate','Avg Price','Signal'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', font: '600 11px Outfit,sans-serif', color: '#8B7355', textTransform: 'uppercase', letterSpacing: '.06em', borderBottom: '1px solid #EEE9E0', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.category_stats?.map((row, i) => {
+                        const sig = signal(row.click_rate, row.views);
+                        return (
+                          <tr key={row.category} style={{ borderBottom: '1px solid #F5F0E8' }}>
+                            <td style={{ padding: '12px 14px', font: '500 13px Outfit,sans-serif', color: '#1A1310' }}>{categoryLabel(row.category)}</td>
+                            <td style={{ padding: '12px 14px', color: '#5C4B3A' }}>{row.live}</td>
+                            <td style={{ padding: '12px 14px', color: '#5C4B3A' }}>{row.views?.toLocaleString()}</td>
+                            <td style={{ padding: '12px 14px', color: '#5C4B3A' }}>{row.whatsapp_clicks}</td>
+                            <td style={{ padding: '12px 14px', color: '#5C4B3A' }}>{row.click_rate?.toFixed(1)}%</td>
+                            <td style={{ padding: '12px 14px', color: '#5C4B3A' }}>{fmtKES(Math.round(row.avg_price||0))}</td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{ display: 'inline-block', background: sig.bg, color: sig.fg, font: '600 11px Outfit,sans-serif', padding: '3px 10px', borderRadius: 20 }}>{sig.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Searches tab */}
+            {marketTab === 'searches' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+                <div>
+                  <h3 style={S.section}>Top Searches (30 days)</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, ...S.card }}>
+                    {stats.top_searches?.slice(0,15).map((s, i) => (
+                      <div key={s.query} style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: i < Math.min(stats.top_searches.length,15)-1 ? '1px solid #F5F0E8' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ font: '600 11px Outfit,sans-serif', color: '#B09070', width: 20 }}>{i+1}</span>
+                          <span style={{ font: '400 13px Outfit,sans-serif', color: '#1A1310' }}>{s.query}</span>
+                        </div>
+                        <span style={{ font: '600 13px Outfit,sans-serif', color: '#F07828' }}>{s.count}</span>
+                      </div>
+                    ))}
+                    {(!stats.top_searches || stats.top_searches.length === 0) && (
+                      <p style={{ padding: 20, font: '400 13px Outfit,sans-serif', color: '#8B7355', margin: 0, textAlign: 'center' }}>No search data yet</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h3 style={S.section}>Demand Gaps (zero results)</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, ...S.card }}>
+                    {stats.demand_gaps?.slice(0,15).map((s, i) => (
+                      <div key={s.query} style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: i < Math.min(stats.demand_gaps.length,15)-1 ? '1px solid #F5F0E8' : 'none' }}>
+                        <span style={{ font: '400 13px Outfit,sans-serif', color: '#1A1310' }}>{s.query}</span>
+                        <span style={{ font: '600 12px Outfit,sans-serif', color: '#E65100', background: '#FFF3E0', padding: '2px 8px', borderRadius: 20 }}>{s.count}x</span>
+                      </div>
+                    ))}
+                    {(!stats.demand_gaps || stats.demand_gaps.length === 0) && (
+                      <p style={{ padding: 20, font: '400 13px Outfit,sans-serif', color: '#8B7355', margin: 0, textAlign: 'center' }}>No gap data yet</p>
+                    )}
+                  </div>
+                  <p style={{ font: '400 11px Outfit,sans-serif', color: '#B09070', margin: '10px 4px 0' }}>Searches with no matching listings - sourcing opportunities</p>
+                </div>
+              </div>
+            )}
+
+            {/* Revenue tab */}
+            {marketTab === 'revenue' && (
+              <div>
+                {/* Monthly bar chart */}
+                <h3 style={S.section}>Revenue by Month</h3>
+                {stats.revenue_by_month?.length > 0 ? (
+                  <div style={{ ...S.card, padding: '18px', marginBottom: 20 }}>
+                    <div style={{ overflowX: 'auto' }}>
+                      <svg width={Math.max((stats.revenue_by_month.length * 48), 300)} height={130} style={{ display: 'block' }}>
+                        {(() => {
+                          const max = Math.max(...stats.revenue_by_month.map(d => d.revenue), 1);
+                          return stats.revenue_by_month.map((d, i) => {
+                            const barH = Math.max(4, Math.round((d.revenue / max) * 90));
+                            const x = i * 48;
+                            return (
+                              <g key={d.month}>
+                                <rect x={x+4} y={96-barH} width={36} height={barH} fill={barH > 4 ? '#F07828' : '#EEE9E0'} rx={5}/>
+                                {d.revenue > 0 && (
+                                  <text x={x+22} y={91-barH} textAnchor="middle" style={{ font: '500 9px Outfit,sans-serif', fill: '#8B7355' }}>
+                                    {d.revenue >= 1000 ? `${(d.revenue/1000).toFixed(0)}k` : d.revenue}
+                                  </text>
+                                )}
+                                <text x={x+22} y={116} textAnchor="middle" style={{ font: '400 10px Outfit,sans-serif', fill: '#8B7355' }}>
+                                  {fmtMonth(d.month)}
+                                </text>
+                              </g>
+                            );
+                          });
+                        })()}
+                      </svg>
+                    </div>
+                    <div style={{ marginTop: 10, padding: '12px 0 0', borderTop: '1px solid #F5F0E8', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355' }}>Total revenue</span>
+                      <span style={{ font: '700 16px Outfit,sans-serif', color: '#F07828' }}>{fmtKES(stats.tiles.total_revenue)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: '#8B7355', font: '400 13px Outfit,sans-serif' }}>No revenue data yet</p>
+                )}
+
+                {/* Tier breakdown */}
+                <h3 style={S.section}>Revenue by Tier</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, ...S.card }}>
+                  {stats.revenue_by_tier?.map((r, i) => (
+                    <div key={r.tier} style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: i < stats.revenue_by_tier.length-1 ? '1px solid #F5F0E8' : 'none' }}>
+                      <span style={{ font: '400 14px Outfit,sans-serif', color: '#1A1310' }}>{tierLabel(r.tier)}</span>
+                      <span style={{ font: '700 15px Outfit,sans-serif', color: '#F07828' }}>{fmtKES(r.revenue)}</span>
+                    </div>
+                  ))}
+                  {(!stats.revenue_by_tier || stats.revenue_by_tier.length === 0) && (
+                    <p style={{ padding: 20, font: '400 13px Outfit,sans-serif', color: '#8B7355', margin: 0, textAlign: 'center' }}>No tier data yet</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Expiring tab */}
+            {marketTab === 'expiring' && (
+              <div>
+                <h3 style={S.section}>Expiring Within 7 Days ({stats.expiring_soon?.length || 0})</h3>
+                {stats.expiring_soon?.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: 48, color: '#8B7355' }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}>
+                      <path d="M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01l-3-3"/>
+                    </svg>
+                    <p style={{ font: '500 15px Outfit,sans-serif', margin: 0 }}>All clear - no listings expiring soon</p>
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {stats.expiring_soon?.map(l => {
+                    const days = l.expires_at ? daysUntil(l.expires_at) : 99;
+                    return (
+                      <div key={l.id} style={{ ...S.card, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 48, height: 48, borderRadius: 10, background: '#FFF4EE', flexShrink: 0, overflow: 'hidden' }}>
+                          {l.images?.[0] ? <img src={l.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : null}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ font: '500 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title}</p>
+                          <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>{l.seller_name} - {l.location}</p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <span style={{ font: '700 13px Outfit,sans-serif', color: days <= 2 ? '#E53935' : '#F57F17', display: 'block' }}>{days}d left</span>
+                          {l.expires_at && <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>{fmtDate(l.expires_at)}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {!statsLoading && !stats && (
+          <div style={{ textAlign: 'center', padding: 48 }}>
+            <button onClick={fetchStats} style={{ padding: '10px 24px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 14px Outfit,sans-serif', cursor: 'pointer' }}>Load data</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // VIEW: BLOG (CMS - full logic preserved)
+  // ========================================================================
+  function renderBlog() {
+    // ── Blog editor ──
+    if (editingArticle || isNewArticle) {
+      const isSaving = saveStatus === 'saving';
+      const badge = editingArticle ? STATUS_BADGE[editingArticle.status as ArticleStatus] : null;
+
+      return (
+        <div>
+          {/* Editor header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button onClick={closeEditor} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8B7355', display: 'flex', alignItems: 'center', gap: 4, font: '400 13px Outfit,sans-serif' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                All articles
+              </button>
+              <span style={{ color: '#C8B89A' }}>/</span>
+              <span style={{ font: '500 14px Outfit,sans-serif', color: '#1A1310' }}>{isNewArticle ? 'New article' : (form.title || 'Edit article')}</span>
+              {badge && <span style={{ background: badge.bg, color: badge.fg, font: '500 11px Outfit,sans-serif', padding: '3px 10px', borderRadius: 20 }}>{badge.label}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {saveStatus === 'saved' && <span style={{ font: '400 12px Outfit,sans-serif', color: '#7DC243' }}>Saved</span>}
+              {saveStatus === 'error' && <span style={{ font: '400 12px Outfit,sans-serif', color: '#E53935' }}>Error</span>}
+              <button onClick={saveArticle} disabled={isSaving} style={{ padding: '8px 20px', background: isSaving ? '#B09070' : '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: isSaving ? 'not-allowed' : 'pointer' }}>
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+              {editingArticle && (
+                <>
+                  {editingArticle.status === 'draft' && (
+                    <button onClick={() => articleAction(editingArticle.id, 'submit')} disabled={!!blogActionLoading} style={{ padding: '8px 16px', background: '#FFF8E1', color: '#F57F17', border: '1px solid #FFECB3', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>Submit</button>
+                  )}
+                  {editingArticle.status === 'pending' && (
+                    <button onClick={() => articleAction(editingArticle.id, 'publish')} disabled={!!blogActionLoading} style={{ padding: '8px 16px', background: '#E8F5E9', color: '#2E7D32', border: '1px solid #A5D6A7', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>Publish</button>
+                  )}
+                  {editingArticle.status === 'published' && (
+                    <button onClick={() => articleAction(editingArticle.id, 'unpublish')} disabled={!!blogActionLoading} style={{ padding: '8px 16px', background: '#f5f4f2', color: '#666', border: '1px solid #ddd', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>Unpublish</button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mode toggle (new articles only) */}
+          {(isNewArticle && !form.content) && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#F7F4EF', borderRadius: 12, padding: 5 }}>
+              <button onClick={() => setEditorMode('generate')} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: editorMode === 'generate' ? '#fff' : 'transparent', color: editorMode === 'generate' ? '#F07828' : '#5C4B3A', font: `${editorMode === 'generate' ? '600' : '400'} 13px Outfit,sans-serif`, cursor: 'pointer', boxShadow: editorMode === 'generate' ? '0 1px 4px rgba(0,0,0,.08)' : 'none' }}>
+                AI Generate
+              </button>
+              <button onClick={() => setEditorMode('manual')} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: editorMode === 'manual' ? '#fff' : 'transparent', color: editorMode === 'manual' ? '#F07828' : '#5C4B3A', font: `${editorMode === 'manual' ? '600' : '400'} 13px Outfit,sans-serif`, cursor: 'pointer', boxShadow: editorMode === 'manual' ? '0 1px 4px rgba(0,0,0,.08)' : 'none' }}>
+                Manual
+              </button>
+            </div>
+          )}
+
+          {/* AI Generate panel */}
+          {editorMode === 'generate' && !form.content && (
+            <div style={{ ...S.card, padding: '20px', marginBottom: 20 }}>
+              <p style={{ font: '600 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 16px' }}>Generate article with AI</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={S.label}>Topic *</label>
+                  <input style={S.input} value={genTopic} onChange={e => setGenTopic(e.target.value)} placeholder="e.g. Best stroller brands for Nairobi roads"/>
+                </div>
+                <div>
+                  <label style={S.label}>Target keywords</label>
+                  <input style={S.input} value={genKeywords} onChange={e => setGenKeywords(e.target.value)} placeholder="e.g. stroller Nairobi, baby gear Kenya"/>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={S.label}>Tone</label>
+                    <select style={S.input} value={genTone} onChange={e => setGenTone(e.target.value as 'friendly'|'professional')}>
+                      <option value="friendly">Friendly</option>
+                      <option value="professional">Professional</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={S.label}>Length</label>
+                    <select style={S.input} value={genLength} onChange={e => setGenLength(e.target.value as 'short'|'standard'|'long')}>
+                      <option value="short">Short (~500 words)</option>
+                      <option value="standard">Standard (~900 words)</option>
+                      <option value="long">Long (~1500 words)</option>
+                    </select>
+                  </div>
+                </div>
+                {genError && <p style={{ font: '400 12px Outfit,sans-serif', color: '#E53935', margin: 0 }}>{genError}</p>}
+                <button onClick={generateArticle} disabled={generating} style={{ padding: '11px', background: generating ? '#B09070' : '#F07828', color: '#fff', border: 'none', borderRadius: 10, font: '600 14px Outfit,sans-serif', cursor: generating ? 'not-allowed' : 'pointer' }}>
+                  {generating ? 'Generating...' : 'Generate Article'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual editor */}
+          {editorMode === 'manual' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ ...S.card, padding: '18px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={S.label}>Title *</label>
+                    <input style={S.input} value={form.title||''} onChange={e => {
+                      const v = e.target.value;
+                      setForm(p => ({ ...p, title: v, slug: p.slug || slugify(v) }));
+                    }} placeholder="Article title"/>
+                  </div>
+                  <div>
+                    <label style={S.label}>Slug *</label>
+                    <input style={S.input} value={form.slug||''} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))}/>
+                  </div>
+                  <div>
+                    <label style={S.label}>Excerpt</label>
+                    <textarea style={{ ...S.input, minHeight: 64, resize: 'vertical' }} value={form.excerpt||''} onChange={e => setForm(p => ({ ...p, excerpt: e.target.value }))} placeholder="Short description for cards and SEO"/>
+                  </div>
+                </div>
+              </div>
+              <div style={{ ...S.card, padding: '18px' }}>
+                <label style={S.label}>Content (Markdown)</label>
+                <textarea style={{ ...S.input, minHeight: 320, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} value={form.content||''} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Write your article in Markdown..."/>
+              </div>
+              <div style={{ ...S.card, padding: '18px' }}>
+                <p style={{ font: '600 13px Outfit,sans-serif', color: '#1A1310', margin: '0 0 12px' }}>SEO & Meta</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label style={S.label}>Cover image URL</label>
+                    <input style={S.input} value={form.cover_image_url||''} onChange={e => setForm(p => ({ ...p, cover_image_url: e.target.value }))} placeholder="https://..."/>
+                  </div>
+                  <div>
+                    <label style={S.label}>Meta title</label>
+                    <input style={S.input} value={form.meta_title||''} onChange={e => setForm(p => ({ ...p, meta_title: e.target.value }))}/>
+                  </div>
+                  <div>
+                    <label style={S.label}>Meta description</label>
+                    <textarea style={{ ...S.input, minHeight: 64, resize: 'vertical' }} value={form.meta_description||''} onChange={e => setForm(p => ({ ...p, meta_description: e.target.value }))}/>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={S.label}>Tags (comma separated)</label>
+                      <input style={S.input} value={form.tagsInput||''} onChange={e => setForm(p => ({ ...p, tagsInput: e.target.value }))} placeholder="nairobi, parenting, gear"/>
+                    </div>
+                    <div>
+                      <label style={S.label}>Author</label>
+                      <input style={S.input} value={form.author||''} onChange={e => setForm(p => ({ ...p, author: e.target.value }))}/>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={S.label}>Reading time (minutes)</label>
+                    <input style={{ ...S.input, maxWidth: 120 }} type="number" min={1} max={60} value={form.reading_time_minutes||5} onChange={e => setForm(p => ({ ...p, reading_time_minutes: Number(e.target.value) }))}/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Delete */}
+              {editingArticle && (
+                <div style={{ padding: '14px 0' }}>
+                  {blogDeleteConfirm === editingArticle.id ? (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <span style={{ font: '400 13px Outfit,sans-serif', color: '#5C4B3A' }}>Delete permanently?</span>
+                      <button onClick={() => deleteArticle(editingArticle.id)} style={{ padding: '7px 16px', background: '#E53935', color: '#fff', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>Delete</button>
+                      <button onClick={() => setBlogDeleteConfirm(null)} style={{ padding: '7px 12px', background: 'none', border: 'none', font: '400 13px Outfit,sans-serif', color: '#8B7355', cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setBlogDeleteConfirm(editingArticle.id)} style={{ background: 'none', border: 'none', font: '400 13px Outfit,sans-serif', color: '#B09070', cursor: 'pointer', padding: 0 }}>
+                      Delete article
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Blog list view ──
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ font: '700 16px Outfit,sans-serif', color: '#1A1310', margin: 0 }}>Blog Articles ({blogArticles.length})</h3>
+          <button onClick={openNewArticle} style={{ padding: '9px 20px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 13px Outfit,sans-serif', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            New article
           </button>
         </div>
 
-        {/* ── DASHBOARD VIEW ── */}
-        {view === 'dashboard' && (
-          <>
-            {statsLoading && (
-              <div style={{ textAlign: 'center', padding: 60 }}>
-                <div className="spinner" style={{ margin: '0 auto' }}/>
-              </div>
-            )}
-            {!statsLoading && stats && (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-                  <StatTile label="Live Listings" value={stats.tiles.live_listings} accent/>
-                  <StatTile label="Pending Review" value={stats.tiles.pending_review} sub={stats.tiles.pending_review > 0 ? 'Needs attention' : 'All clear'}/>
-                  <StatTile label="Total Revenue" value={fmtKES(stats.tiles.total_revenue)}/>
-                  <StatTile label="Approval Rate" value={`${stats.tiles.approval_rate}%`} sub={`${stats.tiles.total_listings} total submitted`}/>
-                  <StatTile label="Total Views" value={stats.tiles.total_views.toLocaleString()} sub="live listings"/>
-                  <StatTile label="WA Clicks" value={stats.tiles.total_wa_clicks.toLocaleString()} sub={stats.tiles.total_views > 0 ? `${Math.round((stats.tiles.total_wa_clicks / stats.tiles.total_views) * 100)}% click rate` : '--'}/>
-                  <StatTile label="Submitted (30d)" value={stats.tiles.submitted_last_30d}/>
-                </div>
-
-                <SectionTitle>Revenue -- Last 6 Months</SectionTitle>
-                {stats.revenue_by_month.every(d => d.revenue === 0) ? (
-                  <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)' }}>No revenue data yet.</p>
-                ) : (
-                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px' }}>
-                    <BarChart data={stats.revenue_by_month}/>
-                  </div>
-                )}
-
-                {stats.revenue_by_tier.length > 0 && (
-                  <>
-                    <SectionTitle>Revenue by Tier</SectionTitle>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                      {stats.revenue_by_tier.sort((a, b) => b.revenue - a.revenue).map(t => (
-                        <div key={t.tier} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
-                          <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '.05em' }}>{tierLabel(t.tier)}</p>
-                          <p style={{ font: '700 20px Outfit,sans-serif', margin: 0, color: t.revenue > 0 ? 'var(--green)' : 'var(--text-3)' }}>{fmtKES(t.revenue)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <SectionTitle>Category Performance</SectionTitle>
-                {stats.category_stats.length === 0 ? (
-                  <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)' }}>No live listings yet.</p>
-                ) : (
-                  <div style={{ overflowX: 'auto', background: '#fff', border: '1px solid var(--border)', borderRadius: 14 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 13px Outfit,sans-serif' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', background: '#fafaf9' }}>
-                          {['Category', 'Live', 'Views', 'WA Clicks', 'Click Rate', 'Avg Price'].map(h => (
-                            <th key={h} style={{ padding: '10px 14px', textAlign: 'left', font: '600 12px Outfit,sans-serif', color: 'var(--text-3)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stats.category_stats.map((row, i) => (
-                          <tr key={row.category} style={{ borderBottom: i < stats.category_stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <td style={{ padding: '10px 14px', font: '600 13px Outfit,sans-serif', color: 'var(--text-1)', whiteSpace: 'nowrap' }}>{categoryLabel(row.category)}</td>
-                            <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.live}</td>
-                            <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.views.toLocaleString()}</td>
-                            <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.whatsapp_clicks.toLocaleString()}</td>
-                            <td style={{ padding: '10px 14px' }}>
-                              <span style={{ background: row.click_rate >= 10 ? '#e8f5e9' : row.click_rate >= 5 ? '#fff8e1' : '#f5f5f5', color: row.click_rate >= 10 ? '#2e7d32' : row.click_rate >= 5 ? '#f57f17' : 'var(--text-3)', borderRadius: 6, padding: '2px 8px', font: '600 12px Outfit,sans-serif' }}>
-                                {row.click_rate}%
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{row.avg_price > 0 ? `KES ${row.avg_price.toLocaleString()}` : '--'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {stats.expiring_soon.length > 0 && (
-                  <>
-                    <SectionTitle>Expiring Soon -- Next 7 Days</SectionTitle>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {stats.expiring_soon.map(l => (
-                        <div key={l.id} style={{ background: '#fff', border: '1px solid #ffe0b2', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          <div>
-                            <p style={{ font: '600 14px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-1)' }}>{l.title}</p>
-                            <p style={{ font: '400 12px Outfit,sans-serif', margin: 0, color: 'var(--text-3)' }}>{categoryLabel(l.category || '')} -- {fmtKES(l.price || 0)} -- {l.views || 0} views</p>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                            <span style={{ background: '#FFF3E0', color: 'var(--orange)', borderRadius: 6, padding: '4px 10px', font: '600 12px Outfit,sans-serif', whiteSpace: 'nowrap' }}>
-                              {daysUntil(l.expires_at as string)}d left
-                            </span>
-                            <Link href={`/listing/${l.id}`} className="btn btn-secondary btn-sm" target="_blank">View</Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
-                  <div>
-                    <SectionTitle>Top Searches (30d)</SectionTitle>
-                    {stats.top_searches.length === 0 ? (
-                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No search data yet.</p>
-                    ) : (
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
-                        {stats.top_searches.map((s, i) => (
-                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.top_searches.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
-                            <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-3)', background: '#f5f4f2', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <SectionTitle>Demand Gaps (0 results)</SectionTitle>
-                    {stats.demand_gaps.length === 0 ? (
-                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No zero-result searches yet.</p>
-                    ) : (
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
-                        {stats.demand_gaps.map((s, i) => (
-                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.demand_gaps.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
-                            <span style={{ font: '600 13px Outfit,sans-serif', color: '#e53935', background: '#ffebee', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </>
+        {blogLoading && (
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ width: 36, height: 36, border: '3px solid #F07828', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite' }}/>
+          </div>
         )}
 
-        {/* ── MODERATION VIEW ── */}
-        {view === 'moderation' && (
-          <>
-            <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
-              {(['pending', 'live', 'rejected'] as const).map(t => (
-                <button key={t} style={tabStyle(modTab === t)} onClick={() => setModTab(t)}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            {modLoading ? (
-              <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }}/></div>
-            ) : listings.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60 }}>
-                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f4f2', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5">
-                    <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
-                  </svg>
-                </div>
-                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>No {modTab} listings</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {listings.map(listing => (
-                  <div key={listing.id} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    {listing.images?.[0] ? (
-                      <img src={listing.images[0]} alt={listing.title} style={{ width: 80, height: 64, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}/>
-                    ) : (
-                      <div style={{ width: 80, height: 64, borderRadius: 8, background: '#f5f4f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5">
-                          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
-                        </svg>
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <p style={{ font: '600 15px Outfit,sans-serif', margin: '0 0 4px', color: 'var(--text-1)' }}>{listing.title}</p>
-                      <p style={{ font: '400 13px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-2)' }}>{listing.price === 0 ? 'FREE' : `KES ${listing.price.toLocaleString()}`} -- {listing.location}</p>
-                      <p style={{ font: '400 12px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-3)' }}>Seller: {listing.seller_name} -- {listing.seller_phone}</p>
-                      <p style={{ font: '400 12px Outfit,sans-serif', margin: 0, color: 'var(--text-3)' }}>Fee: KES {listing.fee_amount} ({listing.fee_tier}){listing.mpesa_code && ` -- M-Pesa: ${listing.mpesa_code}`}</p>
-                      {modTab === 'live' && <p style={{ font: '400 11px Outfit,sans-serif', margin: '4px 0 0', color: 'var(--text-3)' }}>{listing.views || 0} views -- {(listing as Listing & { whatsapp_clicks?: number }).whatsapp_clicks || 0} WA clicks</p>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, alignItems: 'flex-start' }}>
-                      {modTab === 'pending' && (
-                        <>
-                          <button className="btn btn-green btn-sm" onClick={() => updateStatus(listing.id, 'live')} disabled={!!actionLoading}>{actionLoading === listing.id + 'live' ? '...' : 'Approve'}</button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => updateStatus(listing.id, 'rejected')} disabled={!!actionLoading} style={{ color: '#e53935', borderColor: '#e53935' }}>{actionLoading === listing.id + 'rejected' ? '...' : 'Reject'}</button>
-                        </>
-                      )}
-                      {modTab === 'live' && <button className="btn btn-secondary btn-sm" onClick={() => updateStatus(listing.id, 'rejected')} disabled={!!actionLoading} style={{ color: '#e53935', borderColor: '#e53935' }}>{actionLoading === listing.id + 'rejected' ? '...' : 'Take down'}</button>}
-                      {modTab === 'rejected' && <button className="btn btn-green btn-sm" onClick={() => updateStatus(listing.id, 'live')} disabled={!!actionLoading}>{actionLoading === listing.id + 'live' ? '...' : 'Approve'}</button>}
-                      <Link href={`/listing/${listing.id}`} className="btn btn-secondary btn-sm" target="_blank">View</Link>
-                      {deleteConfirm === listing.id ? (
-                        <>
-                          <button className="btn btn-sm" style={{ background: '#e53935', color: '#fff', border: 'none' }} onClick={() => deleteListing(listing.id)} disabled={!!actionLoading}>{actionLoading === listing.id + 'delete' ? '...' : 'Confirm delete'}</button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                        </>
-                      ) : (
-                        <button className="btn btn-secondary btn-sm" onClick={() => setDeleteConfirm(listing.id)} disabled={!!actionLoading} style={{ color: '#e53935', borderColor: '#e53935' }}>Delete</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+        {!blogLoading && blogArticles.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}>
+              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <p style={{ font: '500 15px Outfit,sans-serif', color: '#8B7355', margin: '0 0 16px' }}>No articles yet</p>
+            <button onClick={openNewArticle} style={{ padding: '10px 24px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 20, font: '600 14px Outfit,sans-serif', cursor: 'pointer' }}>Write first article</button>
+          </div>
         )}
 
-        {/* ── POST LISTING VIEW ── */}
-        {view === 'post' && (
-          <>
-            {postSuccess ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#E8F5E9', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </div>
-                <h2 style={{ font: '700 20px Outfit,sans-serif', margin: '0 0 8px' }}>Listing Posted!</h2>
-                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 24px' }}>
-                  &ldquo;{postSuccess.title}&rdquo; is now live on the marketplace.
-                </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <Link href={`/listing/${postSuccess.id}`} target="_blank" className="btn btn-green btn-sm">View Listing</Link>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setPostSuccess(null)}>Post Another</button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ maxWidth: 640 }}>
-                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 28px' }}>
-                  Post a listing on behalf of a parent. It goes live immediately - no M-Pesa required.
-                </p>
-
-                {/* Seller Info */}
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
-                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Seller Info</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    <div>
-                      <label style={labelStyle}>Name *</label>
-                      <input style={{ ...inputStyle, borderColor: postErrors.seller_name ? '#e53935' : 'var(--border)' }}
-                        value={postForm.seller_name}
-                        onChange={e => setPostForm(f => ({ ...f, seller_name: e.target.value }))}
-                        placeholder="e.g. Jane Kamau"/>
-                      {postErrors.seller_name && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.seller_name}</span>}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Phone *</label>
-                      <input style={{ ...inputStyle, borderColor: postErrors.seller_phone ? '#e53935' : 'var(--border)' }}
-                        value={postForm.seller_phone}
-                        onChange={e => setPostForm(f => ({ ...f, seller_phone: e.target.value }))}
-                        placeholder="07xx xxx xxx"/>
-                      {postErrors.seller_phone && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.seller_phone}</span>}
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <label style={labelStyle}>WhatsApp (if different from phone)</label>
-                    <input style={inputStyle}
-                      value={postForm.seller_whatsapp}
-                      onChange={e => setPostForm(f => ({ ...f, seller_whatsapp: e.target.value }))}
-                      placeholder="Leave blank to use phone number above"/>
-                  </div>
-                </div>
-
-                {/* Item Details */}
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
-                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Item Details</h3>
-
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Title *</label>
-                    <input style={{ ...inputStyle, borderColor: postErrors.title ? '#e53935' : 'var(--border)' }}
-                      value={postForm.title}
-                      onChange={e => setPostForm(f => ({ ...f, title: e.target.value }))}
-                      placeholder="e.g. Cybex Priam Stroller - excellent condition"/>
-                    {postErrors.title && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.title}</span>}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                    <div>
-                      <label style={labelStyle}>Category *</label>
-                      <select style={{ ...inputStyle, borderColor: postErrors.category ? '#e53935' : 'var(--border)' }}
-                        value={postForm.category}
-                        onChange={e => setPostForm(f => ({ ...f, category: e.target.value }))}>
-                        <option value="">Select category</option>
-                        {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                      </select>
-                      {postErrors.category && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.category}</span>}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Age Range</label>
-                      <select style={inputStyle}
-                        value={postForm.age_range}
-                        onChange={e => setPostForm(f => ({ ...f, age_range: e.target.value }))}>
-                        <option value="">Select age range</option>
-                        {AGE_RANGES.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Condition *</label>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {CONDITIONS.map(c => (
-                        <button key={c.id} type="button"
-                          onClick={() => setPostForm(f => ({ ...f, condition: c.id }))}
-                          style={{
-                            padding: '8px 14px', border: `2px solid ${postForm.condition === c.id ? 'var(--orange)' : 'var(--border)'}`,
-                            borderRadius: 8, background: postForm.condition === c.id ? '#FFF5EE' : '#fff',
-                            cursor: 'pointer', textAlign: 'left',
-                          }}>
-                          <div style={{ font: '600 13px Outfit,sans-serif', color: postForm.condition === c.id ? 'var(--orange)' : 'var(--text-1)' }}>{c.label}</div>
-                          <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)' }}>{c.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                    {postErrors.condition && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 4 }}>{postErrors.condition}</span>}
-                  </div>
-
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Price *</label>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 14px Outfit,sans-serif', cursor: 'pointer', flexShrink: 0 }}>
-                        <input type="checkbox" checked={postForm.is_donation}
-                          onChange={e => setPostForm(f => ({ ...f, is_donation: e.target.checked, price: '' }))}/>
-                        Free / Donation
-                      </label>
-                      {!postForm.is_donation && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)' }}>KES</span>
-                          <input style={{ ...inputStyle, maxWidth: 160, borderColor: postErrors.price ? '#e53935' : 'var(--border)' }}
-                            type="number" min="0" placeholder="e.g. 8500"
-                            value={postForm.price}
-                            onChange={e => setPostForm(f => ({ ...f, price: e.target.value }))}/>
-                        </div>
-                      )}
-                    </div>
-                    {postErrors.price && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 4 }}>{postErrors.price}</span>}
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Description</label>
-                    <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' } as React.CSSProperties}
-                      value={postForm.description}
-                      onChange={e => setPostForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Describe the item - brand, size, any defects, what is included..."/>
-                  </div>
-                </div>
-
-                {/* Photos */}
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
-                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 4px', color: 'var(--text-1)' }}>Photos</h3>
-                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 14px' }}>Up to 5 photos. First photo is the cover image.</p>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {postPreviews.map((src, i) => (
-                      <div key={i} style={{ position: 'relative' }}>
-                        <img src={src} alt="" style={{ width: 100, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}/>
-                        <button type="button"
-                          onClick={() => {
-                            setPostPhotos(prev => prev.filter((_, j) => j !== i));
-                            setPostPreviews(prev => prev.filter((_, j) => j !== i));
-                          }}
-                          style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#e53935', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 11px sans-serif', lineHeight: 1 }}>
-                          x
-                        </button>
-                        {i === 0 && (
-                          <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'var(--orange)', color: '#fff', borderRadius: 4, padding: '1px 5px', font: '600 9px Outfit,sans-serif' }}>Cover</div>
-                        )}
-                      </div>
-                    ))}
-                    {postPhotos.length < 5 && (
-                      <button type="button"
-                        onClick={() => postFileRef.current?.click()}
-                        style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 8, background: '#fafaf9', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5">
-                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        <span style={{ font: '400 10px Outfit,sans-serif', color: 'var(--text-3)' }}>Add photo</span>
-                      </button>
-                    )}
-                  </div>
-                  <input ref={postFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file || postPhotos.length >= 5) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => {
-                        setPostPhotos(prev => [...prev, file]);
-                        setPostPreviews(prev => [...prev, ev.target?.result as string]);
-                      };
-                      reader.readAsDataURL(file);
-                      e.target.value = '';
-                    }}/>
-                </div>
-
-                {/* Location + Admin Note */}
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
-                  <h3 style={{ font: '700 14px Outfit,sans-serif', margin: '0 0 16px', color: 'var(--text-1)' }}>Location and Notes</h3>
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Neighbourhood *</label>
-                    <select style={{ ...inputStyle, borderColor: postErrors.location ? '#e53935' : 'var(--border)' }}
-                      value={postForm.location}
-                      onChange={e => setPostForm(f => ({ ...f, location: e.target.value }))}>
-                      <option value="">Select neighbourhood</option>
-                      {NAIROBI_HOODS.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                    {postErrors.location && <span style={{ font: '400 11px Outfit,sans-serif', color: '#e53935', display: 'block', marginTop: 3 }}>{postErrors.location}</span>}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Admin Note (internal only - not shown to buyers)</label>
-                    <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' } as React.CSSProperties}
-                      value={postForm.admin_note}
-                      onChange={e => setPostForm(f => ({ ...f, admin_note: e.target.value }))}
-                      placeholder="Any notes about this listing or the parent..."/>
-                  </div>
-                </div>
-
-                {postErrors._form && (
-                  <div style={{ background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
-                    <p style={{ font: '400 14px Outfit,sans-serif', color: '#c62828', margin: 0 }}>{postErrors._form}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {blogArticles.map(article => {
+            const badge = STATUS_BADGE[article.status as ArticleStatus] || STATUS_BADGE.draft;
+            return (
+              <div key={article.id} style={{ ...S.card, padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                {article.cover_image_url && (
+                  <div style={{ width: 60, height: 60, borderRadius: 10, flexShrink: 0, overflow: 'hidden' }}>
+                    <img src={article.cover_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                   </div>
                 )}
-
-                <button
-                  className="btn btn-primary btn-lg"
-                  onClick={submitOnBehalf}
-                  disabled={postSubmitting}
-                  style={{ width: '100%' }}>
-                  {postSubmitting ? 'Posting...' : 'Post Listing Now'}
-                </button>
-                <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', textAlign: 'center', margin: '10px 0 0' }}>
-                  Listing goes live immediately. No M-Pesa required.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── REPORTS VIEW ── */}
-        {view === 'reports' && (
-          <>
-            {statsLoading && (
-              <div style={{ textAlign: 'center', padding: 60 }}>
-                <div className="spinner" style={{ margin: '0 auto' }}/>
-              </div>
-            )}
-            {!statsLoading && !stats && (
-              <div style={{ textAlign: 'center', padding: 60 }}>
-                <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 16px' }}>Could not load report data.</p>
-                <button className="btn btn-secondary btn-sm" onClick={fetchStats}>Retry</button>
-              </div>
-            )}
-            {!statsLoading && stats && (
-              <>
-                {/* Inventory Snapshot */}
-                <SectionTitle>Inventory Snapshot</SectionTitle>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-                  <StatTile label="Live Listings" value={stats.tiles.live_listings} accent/>
-                  <StatTile label="Pending Review" value={stats.tiles.pending_review} sub={stats.tiles.pending_review > 0 ? 'Needs attention' : 'All clear'}/>
-                  <StatTile label="Total Submitted" value={stats.tiles.total_listings}/>
-                  <StatTile label="Approval Rate" value={`${stats.tiles.approval_rate}%`} sub="live vs submitted"/>
-                  <StatTile label="Submitted (30d)" value={stats.tiles.submitted_last_30d}/>
-                  <StatTile label="Expiring Soon" value={stats.expiring_soon.length} sub="next 7 days"/>
-                </div>
-
-                {/* Inquiry Funnel */}
-                <SectionTitle>Inquiry Funnel</SectionTitle>
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 24px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'Total Views', value: stats.tiles.total_views, bg: '#E3F2FD', fg: '#1565C0' },
-                      { label: 'WA Clicks', value: stats.tiles.total_wa_clicks, bg: '#E8F5E9', fg: '#2E7D32' },
-                    ].map((step, i, arr) => (
-                      <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ background: step.bg, borderRadius: 12, padding: '18px 24px', textAlign: 'center', minWidth: 130 }}>
-                          <div style={{ font: '700 26px Outfit,sans-serif', color: step.fg }}>{step.value.toLocaleString()}</div>
-                          <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', marginTop: 3 }}>{step.label}</div>
-                        </div>
-                        {i < arr.length - 1 && (
-                          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" style={{ flexShrink: 0 }}>
-                            <path d="M2 9 L22 9 M15 3 L24 9 L15 15" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                    ))}
-                    <div style={{ background: '#FFF5EE', borderRadius: 12, padding: '18px 24px', textAlign: 'center', minWidth: 130 }}>
-                      <div style={{ font: '700 26px Outfit,sans-serif', color: 'var(--orange)' }}>
-                        {stats.tiles.total_views > 0 ? `${Math.round((stats.tiles.total_wa_clicks / stats.tiles.total_views) * 100)}%` : '--'}
-                      </div>
-                      <div style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', marginTop: 3 }}>Click Rate</div>
-                    </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <span style={{ background: badge.bg, color: badge.fg, font: '500 11px Outfit,sans-serif', padding: '2px 8px', borderRadius: 20 }}>{badge.label}</span>
+                    {article.reading_time_minutes && <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>{article.reading_time_minutes} min read</span>}
                   </div>
-                  <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '14px 0 0' }}>
-                    {stats.tiles.total_views === 0 && 'No views recorded yet.'}
-                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views >= 0.1 && 'Strong engagement - over 10% of views result in a WhatsApp inquiry.'}
-                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views >= 0.05 && stats.tiles.total_wa_clicks / stats.tiles.total_views < 0.1 && 'Decent engagement. Better photos and pricing can improve click rate.'}
-                    {stats.tiles.total_views > 0 && stats.tiles.total_wa_clicks / stats.tiles.total_views < 0.05 && 'Low click rate. Encourage sellers to add quality photos and competitive pricing.'}
-                  </p>
-                </div>
-
-                {/* Category Health */}
-                <SectionTitle>Category Health</SectionTitle>
-                {stats.category_stats.length === 0 ? (
-                  <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)' }}>No live listings yet.</p>
-                ) : (
-                  <div style={{ overflowX: 'auto', background: '#fff', border: '1px solid var(--border)', borderRadius: 14 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', font: '400 13px Outfit,sans-serif' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', background: '#fafaf9' }}>
-                          {['Category', 'Live', 'Views', 'WA Clicks', 'Click Rate', 'Avg Price', 'Signal'].map(h => (
-                            <th key={h} style={{ padding: '10px 14px', textAlign: 'left', font: '600 11px Outfit,sans-serif', color: 'var(--text-3)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.05em' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...stats.category_stats].sort((a, b) => b.whatsapp_clicks - a.whatsapp_clicks).map((row, i, arr) => {
-                          const signal = row.click_rate >= 10 ? { bg: '#E8F5E9', fg: '#2E7D32', label: 'Hot' }
-                            : row.click_rate >= 5 ? { bg: '#FFF8E1', fg: '#F57F17', label: 'Good' }
-                            : row.live > 0 ? { bg: '#FFF3E0', fg: '#E65100', label: 'Slow' }
-                            : { bg: '#f5f5f5', fg: '#9e9e9e', label: 'None' };
-                          return (
-                            <tr key={row.category} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                              <td style={{ padding: '10px 14px', font: '600 13px Outfit,sans-serif', color: 'var(--text-1)', whiteSpace: 'nowrap' }}>{categoryLabel(row.category)}</td>
-                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.live}</td>
-                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.views.toLocaleString()}</td>
-                              <td style={{ padding: '10px 14px', color: 'var(--text-2)' }}>{row.whatsapp_clicks.toLocaleString()}</td>
-                              <td style={{ padding: '10px 14px' }}>
-                                <span style={{ background: row.click_rate >= 10 ? '#e8f5e9' : row.click_rate >= 5 ? '#fff8e1' : '#f5f5f5', color: row.click_rate >= 10 ? '#2e7d32' : row.click_rate >= 5 ? '#f57f17' : 'var(--text-3)', borderRadius: 6, padding: '2px 8px', font: '600 12px Outfit,sans-serif' }}>
-                                  {row.click_rate}%
-                                </span>
-                              </td>
-                              <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{row.avg_price > 0 ? `KES ${row.avg_price.toLocaleString()}` : '--'}</td>
-                              <td style={{ padding: '10px 14px' }}>
-                                <span style={{ background: signal.bg, color: signal.fg, borderRadius: 6, padding: '2px 8px', font: '600 11px Outfit,sans-serif' }}>{signal.label}</span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Revenue */}
-                <SectionTitle>Revenue</SectionTitle>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
-                  <StatTile label="Total Revenue" value={fmtKES(stats.tiles.total_revenue)} accent/>
-                  <StatTile label="Avg per Listing" value={stats.tiles.total_listings > 0 ? fmtKES(Math.round(stats.tiles.total_revenue / stats.tiles.total_listings)) : 'KES 0'} sub="all statuses"/>
-                </div>
-                {stats.revenue_by_tier.length > 0 && (
-                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0', marginBottom: 12 }}>
-                    {[...stats.revenue_by_tier].sort((a, b) => b.revenue - a.revenue).map((t, i, arr) => (
-                      <div key={t.tier} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-1)' }}>{tierLabel(t.tier)}</span>
-                        <span style={{ font: '700 15px Outfit,sans-serif', color: t.revenue > 0 ? 'var(--green)' : 'var(--text-3)' }}>{fmtKES(t.revenue)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {stats.revenue_by_month.some(d => d.revenue > 0) && (
-                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px' }}>
-                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 12px' }}>Revenue - Last 6 Months</p>
-                    <BarChart data={stats.revenue_by_month}/>
-                  </div>
-                )}
-
-                {/* Market Signals */}
-                <SectionTitle>Market Signals</SectionTitle>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 10px' }}>Top Searches (30d)</p>
-                    {stats.top_searches.length === 0 ? (
-                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No data yet.</p>
-                    ) : (
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
-                        {stats.top_searches.map((s, i) => (
-                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.top_searches.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
-                            <span style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-3)', background: '#f5f4f2', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
-                          </div>
-                        ))}
-                      </div>
+                  <p style={{ font: '600 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{article.title}</p>
+                  {article.excerpt && <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{article.excerpt}</p>}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={() => openEditArticle(article)} style={{ padding: '5px 12px', background: '#F7F4EF', border: '1px solid #EEE9E0', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#5C4B3A', cursor: 'pointer' }}>Edit</button>
+                    {article.status === 'draft' && (
+                      <button onClick={() => articleAction(article.id, 'submit')} disabled={!!blogActionLoading} style={{ padding: '5px 12px', background: '#FFF8E1', border: '1px solid #FFECB3', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#F57F17', cursor: 'pointer' }}>Submit</button>
                     )}
-                  </div>
-                  <div>
-                    <p style={{ font: '600 13px Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 10px' }}>Demand Gaps (0 results)</p>
-                    {stats.demand_gaps.length === 0 ? (
-                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)' }}>No zero-result searches yet.</p>
-                    ) : (
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '4px 0' }}>
-                        {stats.demand_gaps.map((s, i) => (
-                          <div key={s.query} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < stats.demand_gaps.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>{s.query}</span>
-                            <span style={{ font: '600 13px Outfit,sans-serif', color: '#e53935', background: '#ffebee', borderRadius: 6, padding: '2px 8px' }}>{s.count}</span>
-                          </div>
-                        ))}
-                      </div>
+                    {article.status === 'pending' && (
+                      <button onClick={() => articleAction(article.id, 'publish')} disabled={!!blogActionLoading} style={{ padding: '5px 12px', background: '#E8F5E9', border: '1px solid #A5D6A7', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#2E7D32', cursor: 'pointer' }}>Publish</button>
                     )}
-                  </div>
-                </div>
-
-                {/* Expiring Soon */}
-                {stats.expiring_soon.length > 0 && (
-                  <>
-                    <SectionTitle>Expiring Soon - Next 7 Days</SectionTitle>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {stats.expiring_soon.map(l => (
-                        <div key={l.id} style={{ background: '#fff', border: '1px solid #ffe0b2', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          <div>
-                            <p style={{ font: '600 14px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-1)' }}>{l.title}</p>
-                            <p style={{ font: '400 12px Outfit,sans-serif', margin: 0, color: 'var(--text-3)' }}>{l.seller_name} - {fmtKES(l.price || 0)}</p>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                            <span style={{ background: '#FFF3E0', color: 'var(--orange)', borderRadius: 6, padding: '4px 10px', font: '600 12px Outfit,sans-serif', whiteSpace: 'nowrap' }}>
-                              {daysUntil(l.expires_at as string)}d left
-                            </span>
-                            <Link href={`/listing/${l.id}`} className="btn btn-secondary btn-sm" target="_blank">View</Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {/* ── BLOG VIEW ── */}
-        {view === 'blog' && (
-          <>
-            {/* Article Editor */}
-            {(isNewArticle || editingArticle) ? (
-              <div>
-                {/* Editor Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={closeEditor}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-                      All Articles
-                    </button>
-                    {editingArticle && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{
-                          background: STATUS_BADGE[editingArticle.status].bg,
-                          color: STATUS_BADGE[editingArticle.status].fg,
-                          borderRadius: 6, padding: '4px 10px', font: '600 11px Outfit,sans-serif',
-                        }}>
-                          {STATUS_BADGE[editingArticle.status].label}
-                        </span>
-                        {editingArticle.views > 0 && (
-                          <span style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)' }}>
-                            {editingArticle.views} views
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {isNewArticle && <span style={{ font: '600 14px Outfit,sans-serif', color: 'var(--text-1)' }}>New Article</span>}
-                  </div>
-
-                  {/* Save & workflow actions */}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {saveStatus === 'saved' && <span style={{ font: '400 13px Outfit,sans-serif', color: '#2e7d32' }}>Saved</span>}
-                    {saveStatus === 'error' && <span style={{ font: '400 13px Outfit,sans-serif', color: '#e53935' }}>Save failed</span>}
-                    <button className="btn btn-secondary btn-sm" onClick={saveArticle} disabled={saveStatus === 'saving'}>
-                      {saveStatus === 'saving' ? 'Saving...' : 'Save Draft'}
-                    </button>
-                    {editingArticle && editingArticle.status === 'draft' && (
-                      <button className="btn btn-secondary btn-sm" style={{ color: '#F57F17', borderColor: '#F57F17' }}
-                        onClick={() => articleAction(editingArticle.id, 'submit')} disabled={!!blogActionLoading}>
-                        {blogActionLoading === editingArticle.id + 'submit' ? '...' : 'Submit for Review'}
-                      </button>
-                    )}
-                    {editingArticle && editingArticle.status === 'pending' && (
-                      <button className="btn btn-green btn-sm"
-                        onClick={() => articleAction(editingArticle.id, 'publish')} disabled={!!blogActionLoading}>
-                        {blogActionLoading === editingArticle.id + 'publish' ? '...' : 'Approve & Publish'}
-                      </button>
-                    )}
-                    {editingArticle && editingArticle.status === 'published' && (
+                    {article.status === 'published' && (
                       <>
-                        <Link href={`/blog/${editingArticle.slug}`} className="btn btn-secondary btn-sm" target="_blank">View Live</Link>
-                        <button className="btn btn-secondary btn-sm" style={{ color: '#e53935', borderColor: '#e53935' }}
-                          onClick={() => articleAction(editingArticle.id, 'unpublish')} disabled={!!blogActionLoading}>
-                          {blogActionLoading === editingArticle.id + 'unpublish' ? '...' : 'Unpublish'}
-                        </button>
+                        <button onClick={() => articleAction(article.id, 'unpublish')} disabled={!!blogActionLoading} style={{ padding: '5px 12px', background: '#f5f4f2', border: '1px solid #ddd', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#666', cursor: 'pointer' }}>Unpublish</button>
+                        <Link href={`/blog/${article.slug}`} target="_blank" style={{ padding: '5px 12px', background: '#E8F5E9', border: '1px solid #A5D6A7', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#2E7D32', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>View</Link>
                       </>
                     )}
+                    {blogDeleteConfirm === article.id ? (
+                      <>
+                        <button onClick={() => deleteArticle(article.id)} style={{ padding: '5px 12px', background: '#E53935', border: 'none', borderRadius: 8, font: '500 12px Outfit,sans-serif', color: '#fff', cursor: 'pointer' }}>Confirm</button>
+                        <button onClick={() => setBlogDeleteConfirm(null)} style={{ padding: '5px 10px', background: 'none', border: 'none', font: '400 12px Outfit,sans-serif', color: '#8B7355', cursor: 'pointer' }}>Cancel</button>
+                      </>
+                    ) : (
+                      <button onClick={() => setBlogDeleteConfirm(article.id)} style={{ padding: '5px 10px', background: 'none', border: 'none', font: '400 12px Outfit,sans-serif', color: '#B09070', cursor: 'pointer' }}>Delete</button>
+                    )}
                   </div>
                 </div>
-
-                {/* Mode tabs: Generate vs Manual */}
-                <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
-                  <button style={tabStyle(editorMode === 'generate')} onClick={() => setEditorMode('generate')}>
-                    AI Generate
-                  </button>
-                  <button style={tabStyle(editorMode === 'manual')} onClick={() => setEditorMode('manual')}>
-                    Edit Article
-                  </button>
-                </div>
-
-                {/* ── AI GENERATE PANEL ── */}
-                {editorMode === 'generate' && (
-                  <div style={{ maxWidth: 640 }}>
-                    <div style={{ background: 'linear-gradient(135deg,#FFF5EE 0%,#F0FBE8 100%)', border: '1px solid #f0d9c4', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2">
-                          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                        </svg>
-                        <p style={{ font: '700 14px Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>AI-Powered Article Generator</p>
-                      </div>
-                      <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                        Describe your article topic and let AI write an SEO-optimised article for Nairobi parents. Review and edit before publishing.
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div>
-                        <label style={labelStyle}>Article Topic *</label>
-                        <input
-                          style={inputStyle}
-                          placeholder="e.g. Best second-hand baby gear to buy in Nairobi"
-                          value={genTopic}
-                          onChange={e => setGenTopic(e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Target Keywords (optional)</label>
-                        <input
-                          style={inputStyle}
-                          placeholder="e.g. buy used stroller Nairobi, baby gear Kenya"
-                          value={genKeywords}
-                          onChange={e => setGenKeywords(e.target.value)}
-                        />
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                          <label style={labelStyle}>Tone</label>
-                          <select
-                            style={{ ...inputStyle, cursor: 'pointer' }}
-                            value={genTone}
-                            onChange={e => setGenTone(e.target.value as 'friendly' | 'professional')}
-                          >
-                            <option value="friendly">Friendly and conversational</option>
-                            <option value="professional">Professional and authoritative</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label style={labelStyle}>Article Length</label>
-                          <select
-                            style={{ ...inputStyle, cursor: 'pointer' }}
-                            value={genLength}
-                            onChange={e => setGenLength(e.target.value as 'short' | 'standard' | 'long')}
-                          >
-                            <option value="short">Short (500-700 words)</option>
-                            <option value="standard">Standard (800-1000 words)</option>
-                            <option value="long">Long (1200-1500 words)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {genError && (
-                        <div style={{ background: '#ffebee', border: '1px solid #ffcdd2', borderRadius: 8, padding: '12px 14px' }}>
-                          <p style={{ font: '400 13px Outfit,sans-serif', color: '#c62828', margin: 0 }}>{genError}</p>
-                        </div>
-                      )}
-
-                      <button
-                        className="btn btn-primary"
-                        onClick={generateArticle}
-                        disabled={generating || !genTopic.trim()}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                      >
-                        {generating ? (
-                          <>
-                            <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#fff' }}/>
-                            Generating article...
-                          </>
-                        ) : (
-                          <>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                            </svg>
-                            Generate Article with AI
-                          </>
-                        )}
-                      </button>
-
-                      {!isNewArticle && editingArticle && (
-                        <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                          Generating will replace the current article content. Your saved draft is preserved in the database.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── MANUAL EDITOR ── */}
-                {editorMode === 'manual' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr min(480px, 38%)', gap: 24, alignItems: 'start' }}>
-
-                    {/* Left: main content fields */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div>
-                        <label style={labelStyle}>Title *</label>
-                        <input
-                          style={inputStyle}
-                          value={form.title || ''}
-                          onChange={e => {
-                            const title = e.target.value;
-                            setForm(p => ({ ...p, title, slug: p.slug || slugify(title) }));
-                          }}
-                          placeholder="Article title"
-                        />
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Slug *</label>
-                        <input
-                          style={inputStyle}
-                          value={form.slug || ''}
-                          onChange={e => setForm(p => ({ ...p, slug: slugify(e.target.value) }))}
-                          placeholder="url-friendly-slug"
-                        />
-                        <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: '4px 0 0' }}>
-                          /blog/{form.slug || 'your-slug-here'}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Excerpt</label>
-                        <textarea
-                          style={{ ...inputStyle, height: 80, resize: 'vertical' }}
-                          value={form.excerpt || ''}
-                          onChange={e => setForm(p => ({ ...p, excerpt: e.target.value }))}
-                          placeholder="Brief description shown in article cards and search results (140-160 chars ideal)"
-                        />
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                          <label style={{ ...labelStyle, margin: 0 }}>Content (HTML)</label>
-                          <span style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)' }}>
-                            Use h2, h3, p, ul, ol, li, strong, em tags
-                          </span>
-                        </div>
-                        <textarea
-                          style={{ ...inputStyle, height: 420, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
-                          value={form.content || ''}
-                          onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-                          placeholder="<h2>First heading</h2>&#10;<p>Article body content...</p>"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Right: metadata */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 80 }}>
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <p style={{ font: '700 13px Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>Article Details</p>
-
-                        <div>
-                          <label style={labelStyle}>Cover Image URL</label>
-                          <input
-                            style={inputStyle}
-                            value={form.cover_image_url || ''}
-                            onChange={e => setForm(p => ({ ...p, cover_image_url: e.target.value }))}
-                            placeholder="https://..."
-                          />
-                        </div>
-
-                        <div>
-                          <label style={labelStyle}>Tags (comma-separated)</label>
-                          <input
-                            style={inputStyle}
-                            value={form.tagsInput || ''}
-                            onChange={e => setForm(p => ({ ...p, tagsInput: e.target.value }))}
-                            placeholder="safety tips, budget, Nairobi"
-                          />
-                        </div>
-
-                        <div>
-                          <label style={labelStyle}>Author</label>
-                          <input
-                            style={inputStyle}
-                            value={form.author || ''}
-                            onChange={e => setForm(p => ({ ...p, author: e.target.value }))}
-                            placeholder="MyTinyverse Team"
-                          />
-                        </div>
-
-                        <div>
-                          <label style={labelStyle}>Reading Time (minutes)</label>
-                          <input
-                            type="number"
-                            style={inputStyle}
-                            value={form.reading_time_minutes || 5}
-                            min={1}
-                            max={60}
-                            onChange={e => setForm(p => ({ ...p, reading_time_minutes: Number(e.target.value) }))}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                          </svg>
-                          <p style={{ font: '700 13px Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>SEO Metadata</p>
-                        </div>
-
-                        <div>
-                          <label style={labelStyle}>Meta Title</label>
-                          <input
-                            style={inputStyle}
-                            value={form.meta_title || ''}
-                            onChange={e => setForm(p => ({ ...p, meta_title: e.target.value }))}
-                            placeholder="50-60 character SEO title"
-                          />
-                          <p style={{ font: '400 11px Outfit,sans-serif', color: (form.meta_title || '').length > 60 ? '#e53935' : 'var(--text-3)', margin: '3px 0 0' }}>
-                            {(form.meta_title || '').length}/60 chars
-                          </p>
-                        </div>
-
-                        <div>
-                          <label style={labelStyle}>Meta Description</label>
-                          <textarea
-                            style={{ ...inputStyle, height: 80, resize: 'none' }}
-                            value={form.meta_description || ''}
-                            onChange={e => setForm(p => ({ ...p, meta_description: e.target.value }))}
-                            placeholder="150-160 character description for search results"
-                          />
-                          <p style={{ font: '400 11px Outfit,sans-serif', color: (form.meta_description || '').length > 160 ? '#e53935' : 'var(--text-3)', margin: '3px 0 0' }}>
-                            {(form.meta_description || '').length}/160 chars
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Workflow actions for current article status */}
-                      {editingArticle && (
-                        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <p style={{ font: '700 13px Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>Approval Workflow</p>
-                          {editingArticle.status === 'draft' && (
-                            <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                              Save your draft, then submit for review when ready.
-                            </p>
-                          )}
-                          {editingArticle.status === 'pending' && (
-                            <p style={{ font: '400 12px Outfit,sans-serif', color: '#F57F17', margin: 0 }}>
-                              Article is pending review. Approve to publish it live.
-                            </p>
-                          )}
-                          {editingArticle.status === 'published' && editingArticle.published_at && (
-                            <p style={{ font: '400 12px Outfit,sans-serif', color: '#2E7D32', margin: 0 }}>
-                              Published {fmtDate(editingArticle.published_at)}
-                            </p>
-                          )}
-
-                          {/* Delete */}
-                          {blogDeleteConfirm === editingArticle.id ? (
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button className="btn btn-sm" style={{ background: '#e53935', color: '#fff', border: 'none', flex: 1 }}
-                                onClick={() => deleteArticle(editingArticle.id)} disabled={!!blogActionLoading}>
-                                {blogActionLoading === editingArticle.id + 'delete' ? '...' : 'Yes, delete'}
-                              </button>
-                              <button className="btn btn-secondary btn-sm" onClick={() => setBlogDeleteConfirm(null)}>Cancel</button>
-                            </div>
-                          ) : (
-                            <button className="btn btn-secondary btn-sm" style={{ color: '#e53935', borderColor: '#e53935' }}
-                              onClick={() => setBlogDeleteConfirm(editingArticle.id)} disabled={!!blogActionLoading}>
-                              Delete Article
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
-            ) : (
-              /* ── ARTICLE LIST ── */
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <div>
-                    <p style={{ font: '700 16px Outfit,sans-serif', margin: '0 0 2px', color: 'var(--text-1)' }}>Articles</p>
-                    <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
-                      Write AI-assisted articles to drive organic traffic. Approve and publish when ready.
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                    <Link href="/blog" className="btn btn-secondary btn-sm" target="_blank">View Blog</Link>
-                    <button className="btn btn-primary btn-sm" onClick={openNewArticle}>
-                      + New Article
-                    </button>
-                  </div>
-                </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
-                {blogLoading ? (
-                  <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }}/></div>
-                ) : blogArticles.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', border: '1px solid var(--border)', borderRadius: 16 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FFF0E6', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="1.5">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                      </svg>
-                    </div>
-                    <h3 style={{ font: '700 18px Outfit,sans-serif', margin: '0 0 8px' }}>No articles yet</h3>
-                    <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 24px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
-                      Create your first AI-powered article to start driving organic search traffic from Nairobi parents.
-                    </p>
-                    <button className="btn btn-primary" onClick={openNewArticle}>Write Your First Article</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {blogArticles.map(article => {
-                      const badge = STATUS_BADGE[article.status];
-                      return (
-                        <div key={article.id} style={{
-                          background: '#fff', border: '1px solid var(--border)', borderRadius: 12,
-                          padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
-                        }}>
-                          {/* Status indicator */}
-                          <div style={{ width: 6, height: 40, borderRadius: 3, background: badge.fg, flexShrink: 0 }}/>
+  // ========================================================================
+  // ADMIN SHELL RENDER
+  // ========================================================================
+  return (
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', background: '#F7F4EF', fontFamily: 'Outfit, sans-serif' }}>
 
-                          {/* Info */}
-                          <div style={{ flex: 1, minWidth: 200 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
-                              <p style={{ font: '600 14px Outfit,sans-serif', margin: 0, color: 'var(--text-1)' }}>{article.title}</p>
-                              <span style={{ background: badge.bg, color: badge.fg, borderRadius: 5, padding: '2px 8px', font: '600 10px Outfit,sans-serif', whiteSpace: 'nowrap' }}>
-                                {badge.label}
-                              </span>
-                            </div>
-                            <p style={{ font: '400 12px Outfit,sans-serif', margin: 0, color: 'var(--text-3)' }}>
-                              {(article.tags || []).join(', ') || 'No tags'}
-                              {' -- '}
-                              {article.reading_time_minutes} min read
-                              {' -- '}
-                              {article.views} views
-                              {article.published_at && ` -- Published ${fmtDate(article.published_at)}`}
-                              {!article.published_at && article.created_at && ` -- Created ${fmtDate(article.created_at)}`}
-                            </p>
-                          </div>
+      {/* ── Global keyframes ── */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .admin-sidebar { display: flex; }
+        .admin-mobile-header { display: none; }
+        .admin-bottom-nav { display: none; }
+        @media (max-width: 767px) {
+          .admin-sidebar { display: none !important; }
+          .admin-mobile-header { display: flex !important; }
+          .admin-bottom-nav { display: flex !important; }
+        }
+        .admin-nav-btn:hover { background: #FFF4EE !important; }
+        .admin-pad-btn:hover { background: #F5F0E8 !important; }
+      `}</style>
 
-                          {/* Quick actions */}
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-                            {article.status === 'pending' && (
-                              <button className="btn btn-green btn-sm"
-                                onClick={() => articleAction(article.id, 'publish')} disabled={!!blogActionLoading}>
-                                {blogActionLoading === article.id + 'publish' ? '...' : 'Publish'}
-                              </button>
-                            )}
-                            {article.status === 'published' && (
-                              <Link href={`/blog/${article.slug}`} className="btn btn-secondary btn-sm" target="_blank">View</Link>
-                            )}
-                            <button className="btn btn-secondary btn-sm" onClick={() => openEditArticle(article)}>Edit</button>
-                            {blogDeleteConfirm === article.id ? (
-                              <>
-                                <button className="btn btn-sm" style={{ background: '#e53935', color: '#fff', border: 'none' }}
-                                  onClick={() => deleteArticle(article.id)} disabled={!!blogActionLoading}>
-                                  {blogActionLoading === article.id + 'delete' ? '...' : 'Confirm'}
-                                </button>
-                                <button className="btn btn-secondary btn-sm" onClick={() => setBlogDeleteConfirm(null)}>Cancel</button>
-                              </>
-                            ) : (
-                              <button className="btn btn-secondary btn-sm" style={{ color: '#e53935', borderColor: '#e53935' }}
-                                onClick={() => setBlogDeleteConfirm(article.id)} disabled={!!blogActionLoading}>
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+      {/* ================================================================
+          SIDEBAR (desktop only)
+      ================================================================ */}
+      <aside className="admin-sidebar" style={{
+        width: 220, flexShrink: 0, background: '#fff',
+        borderRight: '1px solid #EEE9E0', flexDirection: 'column',
+        overflowY: 'auto',
+      }}>
+        {/* Logo */}
+        <div style={{ padding: '20px 16px', borderBottom: '1px solid #EEE9E0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#F07828', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div>
+              <p style={{ font: '700 13px Outfit,sans-serif', margin: 0, color: '#1A1310' }}>MyTinyverse</p>
+              <p style={{ font: '400 11px Outfit,sans-serif', margin: 0, color: '#B09070' }}>Admin - Nairobi</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav items */}
+        <nav style={{ flex: 1, padding: '10px 8px' }}>
+          {NAV_ITEMS.map(item => {
+            const active = view === item.id;
+            return (
+              <button
+                key={item.id}
+                className="admin-nav-btn"
+                onClick={() => {
+                  if (item.id === 'post') setPostSuccess(null);
+                  if (item.id === 'blog') { setEditingArticle(null); setIsNewArticle(false); }
+                  setView(item.id);
+                }}
+                style={{
+                  width: '100%', padding: '10px 12px', border: 'none', borderRadius: 10,
+                  background: active ? '#FFF4EE' : 'transparent',
+                  borderLeft: `3px solid ${active ? '#F07828' : 'transparent'}`,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+                  font: `${active ? '600' : '400'} 14px Outfit,sans-serif`,
+                  color: active ? '#F07828' : '#5C4B3A', marginBottom: 2, transition: 'all .15s',
+                }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={item.icon}/>
+                </svg>
+                {item.label}
+                {item.id === 'queue' && pendingCount > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#F07828', color: '#fff', borderRadius: 10, padding: '1px 7px', font: '700 11px Outfit,sans-serif' }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer actions */}
+        <div style={{ padding: '12px 8px 16px', borderTop: '1px solid #EEE9E0' }}>
+          <a href={`https://wa.me/${WA_ADMIN}`} target="_blank" rel="noopener noreferrer" style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
+            background: '#25D366', color: '#fff', textDecoration: 'none',
+            font: '600 13px Outfit,sans-serif', marginBottom: 6,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d={WA_PATH}/></svg>
+            Open WhatsApp CRM
+          </a>
+          <a href="/" target="_blank" rel="noopener noreferrer" style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10,
+            background: 'transparent', color: '#8B7355', textDecoration: 'none',
+            font: '400 12px Outfit,sans-serif',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+            </svg>
+            Live site
+          </a>
+        </div>
+      </aside>
+
+      {/* ================================================================
+          MAIN CONTENT AREA
+      ================================================================ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+        {/* Mobile header */}
+        <header className="admin-mobile-header" style={{
+          background: '#fff', borderBottom: '1px solid #EEE9E0',
+          padding: '12px 16px', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F07828', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span style={{ font: '700 15px Outfit,sans-serif', color: '#1A1310' }}>
+              {NAV_ITEMS.find(n => n.id === view)?.label || 'Admin'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {pendingCount > 0 && view !== 'queue' && (
+              <button onClick={() => setView('queue')} style={{ background: '#FFF4EE', border: '1.5px solid #F07828', borderRadius: 8, padding: '5px 10px', font: '600 11px Outfit,sans-serif', color: '#F07828', cursor: 'pointer' }}>
+                {pendingCount} pending
+              </button>
+            )}
+            <a href={`https://wa.me/${WA_ADMIN}`} target="_blank" rel="noopener noreferrer" style={{ width: 32, height: 32, borderRadius: 8, background: '#E8F5E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+            </a>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 20px' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto' }}>
+            {view === 'home'   && renderHome()}
+            {view === 'queue'  && renderQueue()}
+            {view === 'post'   && renderPost()}
+            {view === 'market' && renderMarket()}
+            {view === 'blog'   && renderBlog()}
+          </div>
+        </main>
+
+        {/* Mobile bottom nav */}
+        <nav className="admin-bottom-nav" style={{
+          background: '#fff', borderTop: '1px solid #EEE9E0',
+          height: 62, flexShrink: 0,
+        }}>
+          {NAV_ITEMS.map(item => {
+            const active = view === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === 'post') setPostSuccess(null);
+                  if (item.id === 'blog') { setEditingArticle(null); setIsNewArticle(false); }
+                  setView(item.id);
+                }}
+                style={{
+                  flex: 1, border: 'none', background: 'none', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 3, color: active ? '#F07828' : '#8B7355', position: 'relative',
+                  transition: 'color .15s',
+                }}>
+                {item.id === 'queue' && pendingCount > 0 && (
+                  <div style={{
+                    position: 'absolute', top: 7, right: 'calc(50% - 14px)',
+                    width: 16, height: 16, borderRadius: '50%', background: '#F07828',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    font: '700 9px Outfit,sans-serif', color: '#fff',
+                  }}>
+                    {pendingCount > 9 ? '9+' : pendingCount}
                   </div>
                 )}
-              </>
-            )}
-          </>
-        )}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? '2.2' : '1.6'} strokeLinecap="round" strokeLinejoin="round">
+                  <path d={item.icon}/>
+                </svg>
+                <span style={{ font: `${active ? '600' : '400'} 10px Outfit,sans-serif` }}>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
-    </>
+    </div>
   );
 }
