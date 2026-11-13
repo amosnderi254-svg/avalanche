@@ -4,6 +4,7 @@ import ListingsPage from '@/components/ListingsPage';
 import NayaChat from '@/components/NayaChat';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import HeroSearch from '@/components/HeroSearch';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,155 +108,163 @@ export default function Home() {
       <Nav />
 
       {/* ── Hero ────────────────────────────────────────── */}
-      <section style={{
-        background: 'var(--bg, #FFFDF9)',
-        paddingTop: 72,
-        paddingBottom: 64,
-        borderBottom: '1px solid var(--border)',
-        overflow: 'hidden',
-        position: 'relative',
-      }}>
-        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+      <section
+        className="hero-section"
+        style={{
+          position: 'relative',
+          minHeight: 'min(90vh, 720px)',
+          display: 'flex',
+          alignItems: 'center',
+          overflow: 'hidden',
+          borderBottom: '1px solid var(--border)',
+          /* Background image - colorful kids marketplace scene */
+          backgroundImage: 'url(https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=1800&q=80)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center right',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        {/* Gradient scrim - cream on left fading to transparent center, dark edge right */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(100deg, #FFFDF9 0%, #FFFDF9 38%, rgba(255,253,249,.88) 50%, rgba(255,253,249,.4) 65%, rgba(255,253,249,.0) 80%)',
+          zIndex: 1,
+        }}/>
+        {/* Subtle vignette top + bottom */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,.12) 0%, transparent 20%, transparent 80%, rgba(0,0,0,.18) 100%)',
+          zIndex: 2,
+        }}/>
+
+        <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 60, paddingBottom: 60 }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr auto',
-            gap: 48,
+            gap: 56,
             alignItems: 'center',
           }}>
             {/* Left: headline + search */}
-            <div style={{ maxWidth: 620 }}>
+            <div style={{ maxWidth: 580 }}>
+              {/* Pre-headline badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '5px 14px 5px 8px',
+                background: 'rgba(255,255,255,.85)',
+                border: '1.5px solid rgba(240,120,40,.25)',
+                borderRadius: 999,
+                marginBottom: 24,
+                backdropFilter: 'blur(8px)',
+              }}>
+                <span style={{
+                  display: 'inline-block',
+                  width: 8, height: 8,
+                  borderRadius: '50%',
+                  background: '#7DC243',
+                  boxShadow: '0 0 0 3px rgba(125,194,67,.25)',
+                  animation: 'heroPulse 2s ease-in-out infinite',
+                }}/>
+                <span style={{ font: '600 12px Outfit,sans-serif', color: '#1A1A1A', letterSpacing: '.01em' }}>
+                  Nairobi parents marketplace
+                </span>
+              </div>
+
               <h1 style={{
-                font: '900 clamp(42px,6vw,68px)/1.05 Outfit,sans-serif',
-                margin: '0 0 28px',
-                color: 'var(--text-1)',
+                font: '900 clamp(44px,7vw,76px)/1.0 Outfit,sans-serif',
+                margin: '0 0 20px',
+                color: '#1A1A1A',
                 letterSpacing: '-0.03em',
+                textWrap: 'balance' as never,
               }}>
-                Shop smart.<br />
-                <span style={{ color: 'var(--orange, #F07828)' }}>Kids grow fast.</span>
+                Kids grow fast.<br />
+                <span style={{
+                  color: '#F07828',
+                  position: 'relative',
+                  display: 'inline-block',
+                }}>
+                  Save up to 70%
+                  {/* Underline squiggle */}
+                  <svg
+                    aria-hidden="true"
+                    style={{ position: 'absolute', bottom: -6, left: 0, width: '100%', height: 10 }}
+                    viewBox="0 0 200 10" preserveAspectRatio="none"
+                  >
+                    <path d="M0,5 Q25,0 50,5 Q75,10 100,5 Q125,0 150,5 Q175,10 200,5"
+                      fill="none" stroke="#F07828" strokeWidth="2.5" strokeLinecap="round" opacity=".45"/>
+                  </svg>
+                </span>
               </h1>
+
               <p style={{
-                font: '500 17px/1.6 Outfit,sans-serif',
-                color: 'var(--text-3)',
+                font: '500 18px/1.6 Outfit,sans-serif',
+                color: '#4A4A4A',
                 margin: '0 0 36px',
+                maxWidth: 500,
               }}>
-                Find quality gently-used kids gear from Nairobi parents. Bikes, strollers, car seats, toys and more - for a fraction of the original price.
+                Buy and sell quality gently-used kids gear right here in Nairobi. Bikes, strollers, car seats, toys - direct from parents like you.
               </p>
 
-              {/* Search bar */}
-              <form
-                action="/"
-                method="GET"
-                role="search"
-                style={{
-                  display: 'flex',
-                  gap: 0,
-                  border: '2.5px solid var(--text-1, #1A1A1A)',
-                  borderRadius: 12,
-                  boxShadow: '5px 5px 0 var(--text-1, #1A1A1A)',
-                  overflow: 'hidden',
-                  background: '#fff',
-                }}
-              >
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: 16, gap: 10 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--text-3, #999)" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    style={{ flexShrink: 0 }} aria-hidden="true"
-                  >
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  <input
-                    name="q"
-                    type="search"
-                    placeholder="Search bikes, strollers, toys..."
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      outline: 'none',
-                      font: '500 16px Outfit,sans-serif',
-                      color: 'var(--text-1)',
-                      background: 'transparent',
-                      padding: '16px 0',
-                    }}
-                    aria-label="Search listings"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '0 28px',
-                    background: 'var(--orange, #F07828)',
-                    color: '#fff',
-                    border: 'none',
-                    font: '700 15px Outfit,sans-serif',
-                    cursor: 'pointer',
-                    letterSpacing: '.01em',
-                    flexShrink: 0,
-                  }}
-                >
-                  Search
-                </button>
-              </form>
+              {/* Autosuggest search bar */}
+              <HeroSearch />
 
-              {/* Quick links */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                {['Bikes', 'Strollers', 'Car Seats', 'Toys', 'Books'].map(q => (
-                  <Link
-                    key={q}
-                    href={`/?q=${q.toLowerCase()}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '5px 13px',
-                      background: '#fff',
-                      border: '1.5px solid var(--border)',
-                      borderRadius: 999,
-                      font: '500 12px Outfit,sans-serif',
-                      color: 'var(--text-2)',
-                      textDecoration: 'none',
-                      transition: 'border-color .15s, color .15s',
-                    }}
-                  >
-                    {q}
-                  </Link>
+              {/* Quick trust signals below search */}
+              <div style={{ display: 'flex', gap: 20, marginTop: 20, flexWrap: 'wrap' }}>
+                {[
+                  { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', text: 'Free to browse' },
+                  { icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z', text: 'Direct WhatsApp' },
+                  { icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', text: 'KSh 99 to sell' },
+                ].map(item => (
+                  <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#7DC243" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d={item.icon}/>
+                    </svg>
+                    <span style={{ font: '500 13px Outfit,sans-serif', color: '#555' }}>{item.text}</span>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Right: floating product cards (decorative, hidden on mobile) */}
+            {/* Right: floating product cards (decorative, desktop only) */}
             <div
               className="hero-cards"
               aria-hidden="true"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12,
+                gap: 14,
                 flexShrink: 0,
               }}
             >
               {SAMPLE_CARDS.map((card, i) => (
                 <div
                   key={card.label}
+                  className={`hero-float-card hero-float-${i}`}
                   style={{
-                    width: 200,
-                    padding: '14px 16px',
+                    width: 215,
+                    padding: '16px 18px',
                     background: card.bg,
-                    borderRadius: 14,
-                    border: '1.5px solid rgba(0,0,0,.07)',
-                    transform: i === 1 ? 'translateX(16px)' : 'none',
-                    boxShadow: '0 2px 12px rgba(0,0,0,.07)',
+                    borderRadius: 18,
+                    border: '1.5px solid rgba(255,255,255,.8)',
+                    transform: i === 1 ? 'translateX(20px)' : 'none',
+                    boxShadow: '0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06)',
+                    backdropFilter: 'blur(4px)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                     <div style={{
-                      width: 32, height: 32,
-                      background: 'rgba(255,255,255,.7)',
-                      borderRadius: 8,
+                      width: 38, height: 38,
+                      background: 'rgba(255,255,255,.75)',
+                      borderRadius: 10,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0,
+                      boxShadow: '0 2px 6px rgba(0,0,0,.08)',
                     }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
                         stroke={card.iconC} strokeWidth="1.75"
                         strokeLinecap="round" strokeLinejoin="round"
                       >
@@ -263,15 +272,26 @@ export default function Home() {
                       </svg>
                     </div>
                     <div>
-                      <div style={{ font: '600 11px Outfit,sans-serif', color: '#1A1A1A', lineHeight: 1.3 }}>{card.label}</div>
-                      <div style={{ font: '400 10px Outfit,sans-serif', color: '#888' }}>{card.cond}</div>
+                      <div style={{ font: '600 12px Outfit,sans-serif', color: '#1A1A1A', lineHeight: 1.3 }}>{card.label}</div>
+                      <div style={{ font: '400 11px Outfit,sans-serif', color: '#777', marginTop: 2 }}>{card.cond}</div>
                     </div>
                   </div>
-                  <div style={{
-                    font: '700 15px Outfit,sans-serif',
-                    color: card.price === 'FREE' ? '#7DC243' : '#F07828',
-                  }}>
-                    {card.price}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{
+                      font: '800 16px Outfit,sans-serif',
+                      color: card.price === 'FREE' ? '#7DC243' : '#F07828',
+                    }}>
+                      {card.price}
+                    </div>
+                    <div style={{
+                      padding: '3px 10px',
+                      background: 'rgba(255,255,255,.65)',
+                      borderRadius: 999,
+                      font: '600 10px Outfit,sans-serif',
+                      color: '#555',
+                    }}>
+                      Available
+                    </div>
                   </div>
                 </div>
               ))}
@@ -565,13 +585,29 @@ export default function Home() {
 
       {/* ── Page-scoped styles ───────────────────────────── */}
       <style>{`
-        .hero-cards {
-          display: flex;
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-10px); }
         }
-        @media (max-width: 768px) {
+        @keyframes floatAlt {
+          0%, 100% { transform: translateX(20px) translateY(0px); }
+          50%       { transform: translateX(20px) translateY(-8px); }
+        }
+        @keyframes heroPulse {
+          0%, 100% { box-shadow: 0 0 0 3px rgba(125,194,67,.25); }
+          50%       { box-shadow: 0 0 0 6px rgba(125,194,67,.12); }
+        }
+        .hero-float-0 { animation: float 4.5s ease-in-out infinite; }
+        .hero-float-1 { animation: floatAlt 5.2s ease-in-out infinite .8s; }
+        .hero-float-2 { animation: float 3.8s ease-in-out infinite 1.4s; }
+        .hero-cards { display: flex; }
+
+        @media (max-width: 860px) {
           .hero-cards { display: none !important; }
-          section > .container > div[style*="grid-template-columns: 1fr auto"] {
+          .hero-section > div { padding-top: 40px !important; padding-bottom: 48px !important; }
+          .hero-section > div > div {
             grid-template-columns: 1fr !important;
+            gap: 0 !important;
           }
         }
         .cat-chip:hover {
