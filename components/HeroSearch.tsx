@@ -150,12 +150,16 @@ export default function HeroSearch() {
         <div
           style={{
             display: 'flex',
-            border: '2.5px solid #1A1A1A',
+            border: open ? '1.5px solid rgba(240,120,40,.35)' : '1.5px solid rgba(240,120,40,.15)',
             borderRadius: 14,
-            boxShadow: open ? '0 4px 24px rgba(240,120,40,.18), 0 1px 4px rgba(0,0,0,.08)' : '0 2px 16px rgba(0,0,0,.1)',
+            boxShadow: open
+              ? '0 4px 32px rgba(240,120,40,.14), 0 1px 6px rgba(0,0,0,.06)'
+              : '0 2px 20px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04)',
             overflow: 'hidden',
-            background: '#fff',
-            transition: 'box-shadow .2s ease',
+            background: 'rgba(255,255,255,.97)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            transition: 'box-shadow .2s ease, border-color .2s ease',
           }}
         >
           {/* Search icon / spinner */}
@@ -267,9 +271,9 @@ export default function HeroSearch() {
             left: 0,
             right: 0,
             background: '#fff',
-            border: '2px solid #1A1A1A',
+            border: '1.5px solid rgba(240,120,40,.12)',
             borderRadius: 14,
-            boxShadow: '0 8px 40px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08)',
+            boxShadow: '0 8px 40px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06)',
             zIndex: 200,
             overflow: 'hidden',
             animation: 'heroDropIn .15s ease',

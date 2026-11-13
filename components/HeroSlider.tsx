@@ -7,8 +7,8 @@ import HeroSearch from './HeroSearch';
 const SLIDES = [
   {
     id: 'bikes',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1800&q=80',
-    imgPos: 'center right',
+    image: '/images/hero/bikes.jpg',
+    imgPos: '55% center',
     badge: 'Bikes & Scooters',
     line1: 'Get moving.',
     line2: 'Big savings on bikes.',
@@ -42,8 +42,8 @@ const SLIDES = [
   },
   {
     id: 'car-seats',
-    image: 'https://images.unsplash.com/photo-1515041219749-89347f83291a?w=1800&q=80',
-    imgPos: 'center',
+    image: '/images/hero/car-seat.jpg',
+    imgPos: '60% center',
     badge: 'Car Seats & Safety',
     line1: 'Safety first.',
     line2: 'Spend less on car seats.',
@@ -77,8 +77,8 @@ const SLIDES = [
   },
   {
     id: 'playpens',
-    image: 'https://images.unsplash.com/photo-1587392114488-3c487dab9e63?w=1800&q=80',
-    imgPos: 'center',
+    image: '/images/hero/playpen.jpg',
+    imgPos: '58% center',
     badge: 'Playpens & Baby Gear',
     line1: 'Room to grow.',
     line2: 'Deals you will love.',
@@ -141,7 +141,9 @@ export default function HeroSlider() {
     <section
       style={{
         position: 'relative',
-        minHeight: 'min(90vh, 720px)',
+        height: 'calc(100svh - 64px)',
+        minHeight: 480,
+        maxHeight: 860,
         display: 'flex',
         alignItems: 'center',
         overflow: 'hidden',
