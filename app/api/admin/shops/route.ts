@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     void sendShopWelcomeWA(data, 'promoted');
+    void notifyAdminNewShop(data, 'promoted');
     return NextResponse.json({ shop: data, action: 'promoted' });
   }
 
@@ -147,7 +148,31 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   void sendShopWelcomeWA(data, 'created');
+  void notifyAdminNewShop(data, 'created');
   return NextResponse.json({ shop: data, action: 'created' });
+}
+
+// ── ntfy admin alert on new shop ─────────────────────────────────────────────
+async function notifyAdminNewShop(
+  shop: { phone: string; shop_name: string; profile_slug: string; neighbourhood?: string | null; subscription_tier: string },
+  action: 'created' | 'promoted'
+) {
+  const channel = process.env.ADMIN_NOTIFY_CHANNEL;
+  if (!channel) return;
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
+  const shopUrl = `${appUrl}/sellers/${shop.profile_slug}`;
+  const label   = action === 'promoted' ? 'Seller promoted to shop' : 'New shop onboarded';
+  fetch(`https://ntfy.sh/${channel}`, {
+    method: 'POST',
+    headers: {
+      'Title': label,
+      'Priority': 'default',
+      'Tags': 'shopping',
+      'Content-Type': 'text/plain',
+      'Actions': `view, View shop, ${shopUrl}; view, Admin, ${appUrl}/admin`,
+    },
+    body: `${shop.shop_name} | ${shop.subscription_tier} plan\nPhone: ${shop.phone}${shop.neighbourhood ? ` | ${shop.neighbourhood}` : ''}`,
+  }).catch(() => {});
 }
 
 // ── WhatsApp welcome message to new shop owner ────────────────────────────────
