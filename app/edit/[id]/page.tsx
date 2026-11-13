@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import { CATEGORIES, CONDITION_LABELS } from '@/lib/constants';
 import type { Listing } from '@/types';
 
@@ -365,6 +366,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           </button>
         </form>
       </div>
+      <Footer/>
     </>
   );
 }

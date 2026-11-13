@@ -2,6 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -111,6 +112,7 @@ export default function SuccessPage() {
       <Suspense fallback={<div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ margin: '0 auto' }}/></div>}>
         <SuccessContent/>
       </Suspense>
+      <Footer/>
     </>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import Link from 'next/link';
 import type { Listing } from '@/types';
 
@@ -178,6 +179,7 @@ export default function ListingStatusPage({ params }: { params: { id: string } }
           </>
         )}
       </div>
+      <Footer/>
     </>
   );
 }

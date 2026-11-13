@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import ListingCard from '@/components/ListingCard';
 import type { Listing } from '@/types';
 
@@ -135,6 +136,7 @@ export default function SavedPage() {
           </>
         )}
       </div>
+      <Footer/>
     </>
   );
 }

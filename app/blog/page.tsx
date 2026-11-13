@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { createServerClient } from '@/lib/supabase-server';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import Link from 'next/link';
 import type { Article } from '@/types';
 
@@ -346,6 +347,7 @@ export default async function BlogPage() {
           </div>
         </div>
       </section>
+      <Footer/>
     </>
   );
 }

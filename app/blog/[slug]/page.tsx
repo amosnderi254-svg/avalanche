@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import Link from 'next/link';
 import type { Article } from '@/types';
 
@@ -360,6 +361,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
           font-style: italic;
         }
       `}</style>
+      <Footer/>
     </>
   );
 }

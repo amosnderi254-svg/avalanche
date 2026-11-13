@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Nav from '@/components/Nav';
+import Footer from '@/components/Footer';
 import NayaChat from '@/components/NayaChat';
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase-server';
@@ -143,6 +144,7 @@ export default async function ListingPage({ params }: Props) {
         </div>
       </div>
       <NayaChat/>
+      <Footer/>
     </>
   );
 }
