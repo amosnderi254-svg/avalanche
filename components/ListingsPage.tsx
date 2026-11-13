@@ -862,7 +862,7 @@ export default function ListingsPage() {
             animation: 'slideUp .25s cubic-bezier(.22,.68,0,1.1)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0 0' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e0e0e0' }}/>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D8D1C6' }}/>
             </div>
 
             <div style={{ padding: '16px 20px 40px' }}>

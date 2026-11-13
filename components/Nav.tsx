@@ -109,7 +109,7 @@ export default function Nav() {
                 padding: '0 14px 0 42px',
                 font: '400 14px Outfit,sans-serif',
                 color: '#111',
-                background: '#fafaf8',
+                background: '#FEFCF8',
                 outline: 'none',
                 transition: 'border-color .15s',
               }}

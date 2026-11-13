@@ -53,7 +53,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Image */}
-      <Link href={`/listing/${listing.id}`} style={{ display: 'block', position: 'relative', paddingTop: '66%', background: '#f5f4f2', overflow: 'hidden' }}>
+      <Link href={`/listing/${listing.id}`} style={{ display: 'block', position: 'relative', paddingTop: '66%', background: '#F5EFE6', overflow: 'hidden' }}>
         {hasImage ? (
           <img
             src={listing.images[0]}

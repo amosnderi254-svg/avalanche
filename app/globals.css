@@ -10,9 +10,9 @@
   --text-1:   #111111;
   --text-2:   #444444;
   --text-3:   #888888;
-  --bg:       #ffffff;
-  --surface:  #f9f9f7;
-  --border:   #ebebeb;
+  --bg:       #FFFDF9;
+  --surface:  #FBF8F3;
+  --border:   #EAE5DB;
   --r-sm:     8px;
   --r-md:     14px;
   --r-lg:     20px;
@@ -61,7 +61,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 .btn-primary   { background: var(--orange); color: #fff; }
 .btn-primary:hover { filter: brightness(.92); }
 .btn-secondary { background: var(--surface); color: var(--text-1); border: 1.5px solid var(--border); }
-.btn-secondary:hover { background: #f0f0ee; }
+.btn-secondary:hover { background: #F3ECE2; }
 .btn-green     { background: var(--green); color: #fff; }
 .btn-green:hover { filter: brightness(.92); }
 .btn-ghost     { background: transparent; color: var(--text-2); }
@@ -89,7 +89,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 }
 .badge-orange { background: #FFF0E6; color: var(--orange); }
 .badge-green  { background: #EDF7E2; color: #4a8c1e; }
-.badge-gray   { background: #f2f2f2; color: var(--text-3); }
+.badge-gray   { background: #F0EAE0; color: var(--text-3); }
 
 .section-title {
   font: 700 22px 'Outfit', sans-serif;
@@ -122,7 +122,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
   border-radius: var(--r-md);
   font: 400 14px 'Outfit', sans-serif;
   color: #111;
-  background: #fafaf8;
+  background: #FEFCF8;
   outline: none;
   transition: border-color var(--dur);
 }
@@ -137,7 +137,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 .field select:disabled,
 .field textarea:disabled {
   opacity: .55;
-  background: #f2f2f0;
+  background: #EDE8DF;
   cursor: not-allowed;
 }
 

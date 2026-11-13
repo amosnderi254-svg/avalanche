@@ -69,13 +69,13 @@ export default async function ListingPage({ params }: Props) {
               gap: 8,
             }}>
               {listing.images.slice(0, 4).map((src: string, i: number) => (
-                <div key={i} style={{ position: 'relative', paddingTop: '66%', borderRadius: 12, overflow: 'hidden', background: '#f5f4f2' }}>
+                <div key={i} style={{ position: 'relative', paddingTop: '66%', borderRadius: 12, overflow: 'hidden', background: '#F5EFE6' }}>
                   <img src={src} alt={`${listing.title} ${i + 1}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ borderRadius: 12, background: '#f5f4f2', paddingTop: '50%', position: 'relative' }}>
+            <div style={{ borderRadius: 12, background: '#F5EFE6', paddingTop: '50%', position: 'relative' }}>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>📦</div>
             </div>
           )}
