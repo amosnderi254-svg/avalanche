@@ -9,7 +9,9 @@ export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin') || '';
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke').replace(/\/$/, '');
   const isLocalDev = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-  if (!isLocalDev && !origin.startsWith(appUrl)) {
+  // Allow empty origin: iOS Safari omits Origin header on same-origin POST requests.
+  // Only block when a non-empty origin is explicitly present and doesn't match our domain.
+  if (origin && !isLocalDev && !origin.startsWith(appUrl)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -19,8 +21,12 @@ export async function POST(req: NextRequest) {
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
-    // Validate type
-    if (!file.type.startsWith('image/')) {
+    // Validate type — also check by extension because Android camera capture
+    // sometimes returns an empty MIME type (file.type === '').
+    const imgExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'avif'];
+    const ext = (file.name.split('.').pop() || '').toLowerCase() || 'jpg';
+    const isImage = file.type.startsWith('image/') || imgExts.includes(ext);
+    if (!isImage) {
       return NextResponse.json({ error: 'Only images are allowed' }, { status: 400 });
     }
 
@@ -29,8 +35,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image must be under 5MB' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const filename = `${uuidv4()}.${ext}`;
+    // Use a sensible fallback when MIME type is empty (e.g. Android camera capture)
+    const contentType = file.type || 'image/jpeg';
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -38,7 +45,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.storage
       .from('listing-images')
       .upload(filename, buffer, {
-        contentType: file.type,
+        contentType,
         upsert: false,
       });
 

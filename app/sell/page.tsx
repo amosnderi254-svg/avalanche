@@ -100,8 +100,11 @@ function PhotoUploader({ photos, setPhotos }: { photos: UploadedPhoto[]; setPhot
     setUploading(true);
     setUploadErr('');
     const added: UploadedPhoto[] = [];
+    const imgExts = ['jpg','jpeg','png','webp','gif','heic','heif','avif'];
     for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) { setUploadErr('Only image files are allowed.'); continue; }
+      const fileExt = (file.name.split('.').pop() || '').toLowerCase();
+      const isImg = file.type.startsWith('image/') || imgExts.includes(fileExt);
+      if (!isImg) { setUploadErr('Only image files are allowed.'); continue; }
       if (file.size > 5 * 1024 * 1024) { setUploadErr('Each photo must be under 5MB.'); continue; }
       const previewUrl = URL.createObjectURL(file);
       const fd = new FormData();
@@ -315,6 +318,56 @@ export default function SellPage() {
     }
   }, []);
 
+  /* ── Restore in-progress draft (handles browser back button on mobile) ──
+     sessionStorage survives within the same browser tab so if the user
+     hits the hardware/browser back button (which unmounts this component),
+     the draft is fully restored when they return to /sell.
+     This runs AFTER the localStorage effect so its values take priority. */
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('mtv_sell_draft');
+      if (!saved) return;
+      const s = JSON.parse(saved) as Partial<{
+        title: string; category: string; condition: Condition | '';
+        price: string; description: string; step: Step;
+        photos: UploadedPhoto[];
+        sellerName: string; sellerPhone: string; sellerEmail: string; area: string;
+      }>;
+      if (s.title)                 setTitle(s.title);
+      if (s.category)              setCategory(s.category);
+      if (s.condition)             setCondition(s.condition as Condition | '');
+      if (s.price !== undefined)   setPrice(s.price);
+      if (s.description)           setDesc(s.description);
+      if (s.photos?.length) {
+        // Blob previewUrls don't survive navigation — reuse the uploaded URL for preview
+        setPhotos(s.photos.map(p => ({ ...p, previewUrl: p.url })));
+      }
+      if (s.sellerName)  setSellerName(s.sellerName);
+      if (s.sellerPhone) { setSellerPhone(s.sellerPhone); setPayPhone(s.sellerPhone); }
+      if (s.sellerEmail) setSellerEmail(s.sellerEmail);
+      if (s.area)        setArea(s.area);
+      // Restore step (but never the spinner — user should not see a frozen submitting screen)
+      if (s.step && s.step !== 'submitting') setStep(s.step);
+    } catch {
+      // sessionStorage blocked or corrupt -- silent fail
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Persist form draft to sessionStorage on every change ── */
+  useEffect(() => {
+    if (step === 'submitting') return; // don't overwrite draft mid-submit
+    try {
+      sessionStorage.setItem('mtv_sell_draft', JSON.stringify({
+        title, category, condition, price, description,
+        // Persist uploaded URLs only (blob previewUrls are not serialisable)
+        photos: photos.map(p => ({ url: p.url, previewUrl: p.url, name: p.name })),
+        sellerName, sellerPhone, sellerEmail, area, step,
+      }));
+    } catch {
+      // sessionStorage blocked -- silent fail
+    }
+  }, [title, category, condition, price, description, photos, sellerName, sellerPhone, sellerEmail, area, step]);
+
   const priceNum = Number(price) || 0;
   const { tier, fee } = getFeeTier(priceNum);
   const isFree = tier === 'donation';
@@ -421,6 +474,8 @@ export default function SellPage() {
       }
 
       const listing = await res.json();
+      // Clear the draft now that the listing is submitted successfully
+      try { sessionStorage.removeItem('mtv_sell_draft'); } catch { /* ignore */ }
       router.push(`/sell/success?ref=${listing.id}`);
     } catch (err: unknown) {
       setSubmitErr(err instanceof Error ? err.message : 'Submission failed. Please try again.');
