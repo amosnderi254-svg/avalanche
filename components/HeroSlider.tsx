@@ -179,8 +179,7 @@ export default function HeroSlider() {
       <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 32, paddingBottom: 32 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr auto',
-          gap: 56,
+          gridTemplateColumns: '1fr',
           alignItems: 'center',
         }}>
 
@@ -313,69 +312,6 @@ export default function HeroSlider() {
             </div>
           </div>
 
-          {/* ── Right column: slide-specific floating cards ── */}
-          <div
-            key={`cards-${active}`}
-            className="hero-cards"
-            aria-hidden="true"
-            style={{
-              display: 'flex', flexDirection: 'column', gap: 14,
-              animation: 'heroFadeSlide .6s cubic-bezier(.22,.68,0,1.2)',
-            }}
-          >
-            {slide.cards.map((card, ci) => (
-              <div
-                key={card.label}
-                className={`hero-float-card hero-float-${ci}`}
-                style={{
-                  width: 215, padding: '16px 18px',
-                  background: card.bg,
-                  borderRadius: 18,
-                  border: '1.5px solid rgba(255,255,255,.8)',
-                  transform: ci === 1 ? 'translateX(20px)' : 'none',
-                  boxShadow: '0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06)',
-                  backdropFilter: 'blur(4px)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                  <div style={{
-                    width: 38, height: 38,
-                    background: 'rgba(255,255,255,.75)', borderRadius: 10,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 2px 6px rgba(0,0,0,.08)',
-                  }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                      stroke={card.iconC} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
-                    >
-                      <path d={card.icon}/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ font: '600 12px Outfit,sans-serif', color: '#1A1A1A', lineHeight: 1.3 }}>{card.label}</div>
-                    <div style={{ font: '400 11px Outfit,sans-serif', color: '#777', marginTop: 2 }}>{card.cond}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{
-                    font: '800 16px Outfit,sans-serif',
-                    color: card.price === 'FREE' ? '#7DC243' : '#F07828',
-                  }}>
-                    {card.price}
-                  </div>
-                  <div style={{
-                    padding: '3px 10px',
-                    background: 'rgba(255,255,255,.65)',
-                    borderRadius: 999,
-                    font: '600 10px Outfit,sans-serif',
-                    color: '#555',
-                  }}>
-                    Available
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -384,24 +320,9 @@ export default function HeroSlider() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-10px); }
-        }
-        @keyframes floatAlt {
-          0%, 100% { transform: translateX(20px) translateY(0px); }
-          50%       { transform: translateX(20px) translateY(-8px); }
-        }
         @keyframes heroPulse {
           0%, 100% { box-shadow: 0 0 0 3px rgba(125,194,67,.25); }
           50%       { box-shadow: 0 0 0 6px rgba(125,194,67,.12); }
-        }
-        .hero-float-0 { animation: float 4.5s ease-in-out infinite; }
-        .hero-float-1 { animation: floatAlt 5.2s ease-in-out infinite .8s; }
-        .hero-float-2 { animation: float 3.8s ease-in-out infinite 1.4s; }
-        .hero-cards { display: flex; }
-        @media (max-width: 860px) {
-          .hero-cards { display: none !important; }
         }
       `}</style>
     </section>
