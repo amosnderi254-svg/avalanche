@@ -27,7 +27,7 @@ export default function PromoBanner() {
     <div
       role="banner"
       style={{
-        background: '#F07828',
+        background: 'linear-gradient(120deg, #1A0845 0%, #6B21A8 50%, #DB2777 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -59,7 +59,7 @@ export default function PromoBanner() {
           alignItems: 'center',
           gap: 6,
           background: '#fff',
-          color: '#F07828',
+          color: '#DB2777',
           font: '700 13px Outfit,sans-serif',
           padding: '7px 18px',
           borderRadius: 999,
