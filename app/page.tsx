@@ -109,9 +109,6 @@ export default function Home() {
       {/* ── Hero slider ─────────────────────────────────── */}
       <HeroSlider />
 
-      {/* ── Live activity rail (Feature 8) ───────────────── */}
-      <ActivityRail />
-
       {/* ── Category strip ───────────────────────────────── */}
       <section style={{
         background: '#fff',
@@ -159,6 +156,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* ── Live stat strip (Feature 8 — minimal) ─────────── */}
+      <ActivityRail />
 
       {/* ── Listings ─────────────────────────────────────── */}
       <div id="listings" style={{ background: 'var(--bg, #FFFDF9)' }}>
