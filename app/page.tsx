@@ -5,6 +5,7 @@ import NayaChat from '@/components/NayaChat';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
+import PromoBanner from '@/components/PromoBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,9 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
       />
+
+      {/* ── Promo banner (above nav) ─────────────────── */}
+      <PromoBanner />
 
       {/* ── Nav ─────────────────────────────────────────── */}
       <Nav />
