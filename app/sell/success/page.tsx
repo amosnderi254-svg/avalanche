@@ -1,6 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -10,6 +10,14 @@ export const dynamic = 'force-dynamic';
 function SuccessContent() {
   const params = useSearchParams();
   const ref = params.get('ref') ?? 'MTV00000';
+  const [editToken, setEditToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const tokens: Record<string, string> = JSON.parse(localStorage.getItem('mtv_edit_tokens') || '{}');
+      if (ref && tokens[ref]) setEditToken(tokens[ref]);
+    } catch { /* blocked */ }
+  }, [ref]);
 
   return (
     <div style={{ minHeight: 'calc(100vh - 64px)', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
@@ -36,6 +44,37 @@ function SuccessContent() {
         <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 36px' }}>
           Reference: {ref}
         </p>
+
+        {/* Edit listing card — shown when seller has edit token */}
+        {editToken && (
+          <div className="card" style={{ padding: '20px 24px', marginBottom: 24, textAlign: 'left', border: '1.5px solid #d9edff', background: '#f0f8ff' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ font: '700 14px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 4px' }}>
+                  Need to change something?
+                </p>
+                <p style={{ font: '400 13px/1.5 Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 12px' }}>
+                  Edit your title, price, photos or description anytime before it sells.
+                </p>
+                <Link
+                  href={`/edit/${ref}?token=${editToken}`}
+                  style={{ font: '600 13px Outfit,sans-serif', color: '#3b82f6', textDecoration: 'none' }}
+                >
+                  Edit listing
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle' }} aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Share prompt */}
         <div className="card" style={{ padding: '24px', marginBottom: 24, textAlign: 'left' }}>

@@ -16,6 +16,8 @@ interface Listing {
   condition: string;
 }
 
+type EditTokens = Record<string, string>;
+
 function fmt(n: number) {
   return 'KES ' + n.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
@@ -35,7 +37,7 @@ const STATUS_COLOR: Record<string, { bg: string; color: string }> = {
   expired:  { bg: '#f0f0f0', color: '#888' },
 };
 
-function ListingCard({ listing }: { listing: Listing }) {
+function ListingCard({ listing, editToken }: { listing: Listing; editToken?: string }) {
   const cover = listing.images?.[0] || '';
   const st = STATUS_COLOR[listing.status] || STATUS_COLOR.pending;
   const label = STATUS_LABEL[listing.status] || listing.status;
@@ -95,35 +97,54 @@ function ListingCard({ listing }: { listing: Listing }) {
         <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 10px' }}>
           {listing.location} &middot; {date}
         </p>
-        {listing.status === 'live' && (
-          <Link
-            href={`/listings/${listing.id}`}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              font: '600 12px Outfit,sans-serif', color: '#7DC243',
-              textDecoration: 'none',
-            }}
-          >
-            View listing
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </Link>
-        )}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {listing.status === 'live' && (
+            <Link
+              href={`/listings/${listing.id}`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                font: '600 12px Outfit,sans-serif', color: '#7DC243',
+                textDecoration: 'none',
+              }}
+            >
+              View listing
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </Link>
+          )}
+          {editToken && (listing.status === 'live' || listing.status === 'pending') && (
+            <Link
+              href={`/edit/${listing.id}?token=${editToken}`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                font: '600 12px Outfit,sans-serif', color: '#3b82f6',
+                textDecoration: 'none',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 export default function MyListingsPage() {
-  const [phone, setPhone]       = useState('');
-  const [inputPhone, setInput]  = useState('');
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading]   = useState(false);
-  const [err, setErr]           = useState('');
-  const [loaded, setLoaded]     = useState(false);
+  const [phone, setPhone]           = useState('');
+  const [inputPhone, setInput]      = useState('');
+  const [listings, setListings]     = useState<Listing[]>([]);
+  const [loading, setLoading]       = useState(false);
+  const [err, setErr]               = useState('');
+  const [loaded, setLoaded]         = useState(false);
+  const [editTokens, setEditTokens] = useState<EditTokens>({});
 
-  /* On mount: check localStorage for cached seller phone */
+  /* On mount: check localStorage for cached seller phone and edit tokens */
   useEffect(() => {
     try {
       const cached = localStorage.getItem('mtv_seller');
@@ -131,6 +152,10 @@ export default function MyListingsPage() {
         const { phone: p } = JSON.parse(cached);
         if (p) { setPhone(p); setInput(p); }
       }
+    } catch { /* blocked */ }
+    try {
+      const tokens: EditTokens = JSON.parse(localStorage.getItem('mtv_edit_tokens') || '{}');
+      setEditTokens(tokens);
     } catch { /* blocked */ }
     setLoaded(true);
   }, []);
@@ -279,7 +304,7 @@ export default function MyListingsPage() {
         {!loading && listings.length > 0 && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-              {listings.map(l => <ListingCard key={l.id} listing={l} />)}
+              {listings.map(l => <ListingCard key={l.id} listing={l} editToken={editTokens[l.id]} />)}
             </div>
 
             <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>

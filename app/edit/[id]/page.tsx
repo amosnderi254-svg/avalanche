@@ -16,7 +16,7 @@ const LOCATIONS = [
 export default function EditListingPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const urlToken = searchParams.get('token');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [resolvedToken, setResolvedToken] = useState<string | null>(null);
 
   // Form state mirrors sell form
   const [form, setForm] = useState({
@@ -38,7 +39,16 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
 
   useEffect(() => {
+    // Try URL param first, then fall back to localStorage
+    let token = urlToken;
+    if (!token) {
+      try {
+        const tokens: Record<string, string> = JSON.parse(localStorage.getItem('mtv_edit_tokens') || '{}');
+        token = tokens[params.id] || null;
+      } catch { /* blocked */ }
+    }
     if (!token) { setTokenError(true); setLoading(false); return; }
+    setResolvedToken(token);
 
     fetch(`/api/listings/${params.id}/edit?token=${encodeURIComponent(token)}`)
       .then(r => r.json())
@@ -46,6 +56,9 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         if (data.error) {
           setTokenError(true);
         } else {
+          // Normalize phone back to local 07xxx format for display if stored as 2547xxx
+          const rawPhone = data.seller_phone || '';
+          const displayPhone = rawPhone.startsWith('254') ? '0' + rawPhone.slice(3) : rawPhone;
           setForm({
             title: data.title || '',
             price: String(data.price ?? ''),
@@ -54,8 +67,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
             description: data.description || '',
             location: data.location || '',
             seller_name: data.seller_name || '',
-            seller_phone: data.seller_phone || '',
-            seller_whatsapp: data.seller_whatsapp || '',
+            seller_phone: displayPhone,
+            seller_whatsapp: (data.seller_whatsapp || '').startsWith('254') ? '0' + (data.seller_whatsapp || '').slice(3) : (data.seller_whatsapp || ''),
             seller_email: data.seller_email || '',
           });
           setExistingImages(data.images || []);
@@ -63,7 +76,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       })
       .catch(() => setTokenError(true))
       .finally(() => setLoading(false));
-  }, [params.id, token]);
+  }, [params.id, urlToken]);
 
   function handleField(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
@@ -98,7 +111,11 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     if (!form.location) e.location = 'Pick your location';
     if (!form.seller_name.trim()) e.seller_name = 'Your name is required';
     if (!form.seller_phone.trim()) e.seller_phone = 'Phone number is required';
-    if (!/^0[17]\d{8}$/.test(form.seller_phone.trim())) e.seller_phone = 'Enter a valid Safaricom / Airtel number';
+    // Accept both local format (07xxx) and E.164 without + (2547xxx)
+    const ph = form.seller_phone.trim().replace(/\s+/g, '');
+    if (!/^(0[17]\d{8}|2547\d{8}|2541\d{8})$/.test(ph)) {
+      e.seller_phone = 'Enter a valid Safaricom / Airtel number';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -117,19 +134,27 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate() || !token) return;
+    if (!validate() || !resolvedToken) return;
 
     setSubmitting(true);
     try {
       const newImageUrls = newFiles.length > 0 ? await uploadImages() : [];
       const allImages = [...existingImages, ...newImageUrls];
 
-      const res = await fetch(`/api/listings/${params.id}/edit?token=${encodeURIComponent(token)}`, {
+      // Normalize phone to E.164 for storage (without +)
+      const rawPhone = form.seller_phone.trim().replace(/\s+/g, '');
+      const normalizedPhone = rawPhone.startsWith('0') ? '254' + rawPhone.slice(1) : rawPhone;
+      const rawWa = form.seller_whatsapp.trim().replace(/\s+/g, '');
+      const normalizedWa = rawWa.startsWith('0') ? '254' + rawWa.slice(1) : rawWa;
+
+      const res = await fetch(`/api/listings/${params.id}/edit?token=${encodeURIComponent(resolvedToken)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           price: parseInt(form.price) || 0,
+          seller_phone: normalizedPhone,
+          seller_whatsapp: normalizedWa || normalizedPhone,
           images: allImages,
         }),
       });
@@ -157,11 +182,11 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           </div>
           <h1 style={{ font: '700 24px Outfit,sans-serif', margin: '0 0 12px' }}>Listing updated!</h1>
           <p style={{ font: '400 14px/1.65 Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 28px' }}>
-            Your changes have been saved. The listing is still under review.
+            Your changes have been saved and are now live.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <a href={`/status/${params.id}`} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
-              Check listing status
+            <a href={`/my-listings`} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
+              View my listings
             </a>
             <button className="btn btn-primary btn-sm" onClick={() => router.push('/')} style={{ width: '100%' }}>
               Back to marketplace
@@ -185,7 +210,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           </div>
           <h1 style={{ font: '700 22px Outfit,sans-serif', margin: '0 0 8px' }}>Can't edit this listing</h1>
           <p style={{ font: '400 14px/1.55 Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 28px' }}>
-            The edit link is invalid, expired, or the listing has already been reviewed. Listings can only be edited while they're pending approval.
+            The edit link is invalid, expired, or this listing is not editable. Only pending and live listings can be edited with a valid token.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
             <a href="https://wa.me/254790784084" target="_blank" rel="noopener noreferrer" className="btn btn-green btn-sm">
@@ -224,7 +249,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         </p>
         <div style={{ background: '#FFF8F3', border: '1.5px solid #FFD4B0', borderRadius: 10, padding: '10px 14px', marginBottom: 24 }}>
           <p style={{ font: '400 12px Outfit,sans-serif', color: 'var(--text-2)', margin: 0 }}>
-            Once approved by admin, the listing will go live and can no longer be edited from this link.
+            Changes are saved instantly. You can edit your listing while it is pending or live.
           </p>
         </div>
 

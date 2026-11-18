@@ -475,6 +475,12 @@ export default function SellPage() {
       }
 
       const listing = await res.json();
+      // Store edit token so the seller can edit this listing later
+      try {
+        const tokens: Record<string, string> = JSON.parse(localStorage.getItem('mtv_edit_tokens') || '{}');
+        if (listing.id && listing.edit_token) tokens[listing.id] = listing.edit_token;
+        localStorage.setItem('mtv_edit_tokens', JSON.stringify(tokens));
+      } catch { /* ignore */ }
       // Clear the draft now that the listing is submitted successfully
       try { sessionStorage.removeItem('mtv_sell_draft'); } catch { /* ignore */ }
       router.push(`/sell/success?ref=${listing.id}`);
