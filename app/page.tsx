@@ -7,6 +7,7 @@ import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
 import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
+import AudioPlayer from '@/components/AudioPlayer';
 
 export const dynamic = 'force-dynamic';
 
@@ -395,6 +396,9 @@ export default function Home() {
 
       {/* ── Footer ──────────────────────────────────────── */}
       <Footer />
+
+      {/* ── Floating audio player (bottom-left) ─────────── */}
+      <AudioPlayer />
 
       {/* ── Page-scoped styles ───────────────────────────── */}
       <style>{`
