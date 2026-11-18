@@ -142,8 +142,7 @@ export default function HeroSlider() {
       style={{
         position: 'relative',
         height: 'calc(100svh - 64px)',
-        minHeight: 480,
-        maxHeight: 860,
+        minHeight: 520,
         display: 'flex',
         alignItems: 'center',
         overflow: 'hidden',
@@ -176,7 +175,7 @@ export default function HeroSlider() {
       }}/>
 
       {/* Main content */}
-      <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 32, paddingBottom: 32 }}>
+      <div className="container" style={{ position: 'relative', zIndex: 3, width: '100%', paddingTop: 48, paddingBottom: 64 }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr',
