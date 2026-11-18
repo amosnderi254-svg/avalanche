@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import HeroSearch from './HeroSearch';
+import HeroActivityToast from './HeroActivityToast';
 
 /* ── Slide definitions ─────────────────────────────── */
 const SLIDES = [
@@ -313,6 +314,9 @@ export default function HeroSlider() {
 
         </div>
       </div>
+
+      {/* ── Activity toast — bottom-right corner ──────── */}
+      <HeroActivityToast />
 
       <style>{`
         @keyframes heroFadeSlide {
