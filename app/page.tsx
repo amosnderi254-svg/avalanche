@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
 import PromoBanner from '@/components/PromoBanner';
+import ActivityRail from '@/components/ActivityRail';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,9 @@ export default function Home() {
 
       {/* ── Hero slider ─────────────────────────────────── */}
       <HeroSlider />
+
+      {/* ── Live activity rail (Feature 8) ───────────────── */}
+      <ActivityRail />
 
       {/* ── Category strip ───────────────────────────────── */}
       <section style={{
