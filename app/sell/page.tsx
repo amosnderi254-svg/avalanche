@@ -368,7 +368,8 @@ export default function SellPage() {
     }
   }, [title, category, condition, price, description, photos, sellerName, sellerPhone, sellerEmail, area, step]);
 
-  const priceNum = Number(price) || 0;
+  // Strip commas before converting — price state stores formatted display value
+  const priceNum = Number(price.replace(/,/g, '')) || 0;
   const { tier, fee } = getFeeTier(priceNum);
   const isFree = tier === 'donation';
 
@@ -754,11 +755,22 @@ export default function SellPage() {
                   KES
                 </span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={price}
-                  onChange={e => setPrice(e.target.value)}
+                  onChange={e => {
+                    // Strip commas, allow digits + one decimal point
+                    const raw = e.target.value.replace(/,/g, '').replace(/[^\d.]/g, '');
+                    if (raw === '') { setPrice(''); return; }
+                    // Guard against multiple decimal points
+                    const parts = raw.split('.');
+                    const intPart = parts[0];
+                    const decPart = parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, 2) : '';
+                    // Format integer part with commas
+                    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + decPart;
+                    setPrice(formatted);
+                  }}
                   placeholder="0"
-                  min={0}
                   style={{ width: '100%', boxSizing: 'border-box', height: 48, border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0 14px 0 56px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', outline: 'none' }}
                 />
               </div>

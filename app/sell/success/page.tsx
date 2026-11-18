@@ -92,6 +92,36 @@ function SuccessContent() {
           </div>
         </div>
 
+        {/* My Listings CTA */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 24, textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff4ec', border: '1.5px solid #ffd9b8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ font: '700 14px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 4px' }}>
+                Track your listings
+              </p>
+              <p style={{ font: '400 13px/1.5 Outfit,sans-serif', color: 'var(--text-2)', margin: '0 0 12px' }}>
+                See all your active, pending, and sold items in one place.
+              </p>
+              <Link
+                href="/my-listings"
+                style={{ font: '600 13px Outfit,sans-serif', color: 'var(--orange)', textDecoration: 'none' }}
+              >
+                View my listings
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle' }} aria-hidden="true">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link href="/" className="btn btn-secondary">
             Browse marketplace
