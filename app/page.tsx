@@ -9,6 +9,7 @@ import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
 
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -45,19 +46,6 @@ const homeJsonLd = {
     },
   ],
 };
-
-const CATEGORIES = [
-  { id: 'all',       label: 'All Items',   icon: 'M3 5h20M3 12h20M3 19h20' },
-  { id: 'bikes',     label: 'Bikes',       icon: 'M5 17a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4zM12 17v-5l-3-3 4-4 3 3h3' },
-  { id: 'scooters',  label: 'Scooters',    icon: 'M5 17a2 2 0 100-4 2 2 0 000 4zM17 5v8M12 5h9M12 5v8h5' },
-  { id: 'strollers', label: 'Strollers',   icon: 'M4 16s-1-2 0-2h16s1 2 0 2M6 20h12M2 8h20M6 8V4h12v4' },
-  { id: 'car-seats', label: 'Car Seats',   icon: 'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3m-2 10a2 2 0 002 2h4a2 2 0 002-2V9a2 2 0 00-2-2h-4a2 2 0 00-2 2v8zm4-6h2' },
-  { id: 'toys',      label: 'Toys',        icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
-  { id: 'books',     label: 'Books',       icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 014 4.5v15z' },
-  { id: 'baby-gear', label: 'Baby Gear',   icon: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z' },
-  { id: 'shoes',     label: 'Shoes',       icon: 'M22 11.5A6.5 6.5 0 0015.5 5h-3L6 7.5V14l3-1 2 3h3.5A6.5 6.5 0 0022 11.5z' },
-  { id: 'clothing',  label: 'Clothing',    icon: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z' },
-];
 
 const HOW_IT_WORKS = [
   {
@@ -109,54 +97,6 @@ export default function Home() {
 
       {/* ── Hero slider ─────────────────────────────────── */}
       <HeroSlider />
-
-      {/* ── Category strip ───────────────────────────────── */}
-      <section style={{
-        background: '#fff',
-        borderBottom: '1px solid var(--border)',
-      }}>
-        <div className="container" style={{
-          display: 'flex',
-          gap: 4,
-          padding: '12px 20px',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-        }}>
-          {CATEGORIES.map(cat => (
-            <Link
-              key={cat.id}
-              href={cat.id === 'all' ? '/' : `/?cat=${cat.id}`}
-              scroll={false}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '9px 16px',
-                borderRadius: 999,
-                border: '1.5px solid var(--border)',
-                background: '#fff',
-                font: '600 13px Outfit,sans-serif',
-                color: 'var(--text-2)',
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                transition: 'all .15s',
-                flexShrink: 0,
-              }}
-              className="cat-chip"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke="var(--orange, #F07828)" strokeWidth="1.75"
-                strokeLinecap="round" strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d={cat.icon}/>
-              </svg>
-              {cat.label}
-            </Link>
-          ))}
-        </div>
-      </section>
 
       {/* ── Live stat strip (Feature 8 — minimal) ─────────── */}
       <ActivityRail />
@@ -400,18 +340,6 @@ export default function Home() {
       {/* ── Floating audio player (bottom-left) ─────────── */}
       <AudioPlayer />
 
-      {/* ── Page-scoped styles ───────────────────────────── */}
-      <style>{`
-        .cat-chip:hover {
-          border-color: var(--orange, #F07828);
-          color: var(--orange, #F07828);
-          background: #FFF3EB;
-        }
-        a[href*="/?cat="]:hover,
-        a[href="/"]:hover {
-          text-decoration: none;
-        }
-      `}</style>
     </>
   );
 }
