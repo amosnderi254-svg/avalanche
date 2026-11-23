@@ -107,7 +107,7 @@ const NAV_ITEMS: { id: AdminView; label: string; icon: string }[] = [
   { id: 'post',   label: 'Post',    icon: 'M12 5v14M5 12h14' },
   { id: 'market', label: 'Market',  icon: 'M18 20V10M12 20V4M6 20v-6' },
   { id: 'blog',   label: 'Blog',    icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-  { id: 'shops',  label: 'Shops',   icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2zM9 22V12h6v10' },
+  { id: 'shops',  label: 'Shops',   icon: 'M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0' },
 ];
 
 // ── Pin Screen ────────────────────────────────────────────────────────────────
@@ -289,11 +289,11 @@ export default function AdminPage() {
   const [marketTab, setMarketTab] = useState<'categories'|'searches'|'revenue'|'expiring'>('categories');
 
   // Shops
-  interface ShopRow { id: string; phone: string; display_name: string; profile_slug: string; neighbourhood: string | null; shop_name: string | null; shop_bio: string | null; shop_areas: string[]; is_shop: boolean; verified_shop: boolean; subscription_tier: string; subscription_expires_at: string | null; listing_count: number; created_at: string; }
+  interface ShopRow { id: string; phone: string; display_name: string; profile_slug: string; neighbourhood: string | null; avatar_url: string | null; shop_name: string | null; shop_bio: string | null; shop_areas: string[]; is_shop: boolean; verified_shop: boolean; subscription_tier: string; subscription_expires_at: string | null; listing_count: number; created_at: string; }
   const [shops, setShops]               = useState<ShopRow[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [shopSearch, setShopSearch]     = useState('');
-  const [onboardForm, setOnboardForm]   = useState({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free' });
+  const [onboardForm, setOnboardForm]   = useState({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free', mpesa_ref: '' });
   const [onboardLoading, setOnboardLoading] = useState(false);
   const [onboardMsg, setOnboardMsg]     = useState('');
   const [editShop, setEditShop]         = useState<ShopRow | null>(null);
@@ -596,8 +596,8 @@ export default function AdminPage() {
 
         {/* KPI tiles */}
         {statsLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
-            {[0,1,2,3].map(i => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
+            {[0,1,2,3,4,5].map(i => (
               <div key={i} style={{ background: '#fff', border: '1px solid #EEE9E0', borderRadius: 14, padding: '20px 22px', height: 90 }}>
                 <div style={{ width: '60%', height: 12, background: '#f5f4f2', borderRadius: 6, marginBottom: 10 }}/>
                 <div style={{ width: '40%', height: 24, background: '#f5f4f2', borderRadius: 6 }}/>
@@ -605,12 +605,14 @@ export default function AdminPage() {
             ))}
           </div>
         ) : stats ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
             {[
-              { label: 'Total Revenue', value: fmtKES(stats.tiles.total_revenue), sub: `KES ${(stats.tiles.total_revenue / Math.max(stats.tiles.total_listings||1, 1)).toFixed(0)} avg`, accent: false },
-              { label: 'Live Listings', value: stats.tiles.live_listings, sub: `${stats.tiles.approval_rate?.toFixed(0)||0}% approval rate`, accent: true },
-              { label: 'Expiring Soon', value: stats.expiring_soon?.length || 0, sub: 'Within 7 days', accent: (stats.expiring_soon?.length||0) > 0 },
-              { label: 'Searches (30d)', value: stats.top_searches?.length || 0, sub: `${stats.demand_gaps?.length||0} demand gaps`, accent: false },
+              { label: 'Total Revenue',  value: fmtKES(stats.tiles.total_revenue), sub: `KES ${(stats.tiles.total_revenue / Math.max(stats.tiles.total_listings||1, 1)).toFixed(0)} avg`, accent: false },
+              { label: 'Live Listings',  value: stats.tiles.live_listings, sub: `${stats.tiles.approval_rate?.toFixed(0)||0}% approval rate`, accent: true },
+              { label: 'Pending Review', value: stats.tiles.pending_review || 0, sub: 'Awaiting moderation', accent: (stats.tiles.pending_review || 0) > 0 },
+              { label: 'Total Views',    value: (stats.tiles.total_views || 0).toLocaleString(), sub: 'All-time listing views', accent: false },
+              { label: 'WA Clicks',      value: (stats.tiles.total_wa_clicks || 0).toLocaleString(), sub: 'WhatsApp contact taps', accent: false },
+              { label: 'Listed (30d)',   value: stats.tiles.submitted_last_30d || 0, sub: `${stats.demand_gaps?.length||0} demand gaps`, accent: false },
             ].map(tile => (
               <div key={tile.label} style={{
                 ...S.card, padding: '18px 20px',
@@ -1284,7 +1286,7 @@ export default function AdminPage() {
         const data = await res.json();
         if (res.ok) {
           setOnboardMsg(`Shop ${data.action === 'promoted' ? 'promoted' : 'created'} successfully.`);
-          setOnboardForm({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free' });
+          setOnboardForm({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free', mpesa_ref: '' });
           fetchShops();
         } else {
           setOnboardMsg(`Error: ${data.error}`);
@@ -1362,18 +1364,33 @@ export default function AdminPage() {
                   onChange={e => setOnboardForm(f => ({ ...f, subscription_tier: e.target.value }))}
                   style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
                 >
-                  {TIERS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                  <option value="free">Free - 5 listings, KES 0/mo</option>
+                  <option value="starter">Starter - 30 listings, KES 999/mo</option>
+                  <option value="pro">Pro - Unlimited, KES 1,999/mo</option>
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop bio</label>
-              <input
-                type="text" placeholder="One-line shop description"
-                value={onboardForm.shop_bio}
-                onChange={e => setOnboardForm(f => ({ ...f, shop_bio: e.target.value }))}
-                style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop bio</label>
+                <input
+                  type="text" placeholder="One-line shop description"
+                  value={onboardForm.shop_bio}
+                  onChange={e => setOnboardForm(f => ({ ...f, shop_bio: e.target.value }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>
+                  M-Pesa ref <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(if paid tier)</span>
+                </label>
+                <input
+                  type="text" placeholder="e.g. QKL1AB2CD3"
+                  value={onboardForm.mpesa_ref}
+                  onChange={e => setOnboardForm(f => ({ ...f, mpesa_ref: e.target.value.toUpperCase() }))}
+                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '500 13px monospace', letterSpacing: '.06em', boxSizing: 'border-box' }}
+                />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <button type="submit" disabled={onboardLoading}
@@ -1429,10 +1446,21 @@ export default function AdminPage() {
                           </span>
                         )}
                         <span style={{ background: tierBg(shop.subscription_tier), borderRadius: 20, padding: '2px 8px', font: '600 11px Outfit,sans-serif', color: tierColor(shop.subscription_tier) }}>
-                          {shop.subscription_tier.charAt(0).toUpperCase() + shop.subscription_tier.slice(1)}
+                          {shop.subscription_tier === 'pro' ? 'Pro' : shop.subscription_tier === 'starter' ? 'Starter' : 'Free'}
+                          <span style={{ fontWeight: 400, opacity: .75 }}>{shop.subscription_tier === 'pro' ? ' unlimited' : shop.subscription_tier === 'starter' ? ' 30 items' : ' 5 items'}</span>
                         </span>
-                        {shop.listing_count > 0 && (
-                          <span style={{ font: '500 12px Outfit,sans-serif', color: '#7DC243' }}>{shop.listing_count} items</span>
+                        <span style={{ font: '500 12px Outfit,sans-serif', color: shop.listing_count > 0 ? '#7DC243' : '#B09070' }}>
+                          {shop.listing_count} {shop.listing_count === 1 ? 'item' : 'items'}
+                        </span>
+                        {shop.subscription_expires_at && daysUntil(shop.subscription_expires_at) <= 30 && (
+                          <span style={{
+                            background: daysUntil(shop.subscription_expires_at) <= 7 ? '#FFEBEE' : '#FFF8E1',
+                            borderRadius: 20, padding: '2px 8px',
+                            font: '600 11px Outfit,sans-serif',
+                            color: daysUntil(shop.subscription_expires_at) <= 7 ? '#C62828' : '#F57F17',
+                          }}>
+                            {daysUntil(shop.subscription_expires_at) === 0 ? 'Expires today' : `Exp. in ${daysUntil(shop.subscription_expires_at)}d`}
+                          </span>
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: 12, font: '400 12px Outfit,sans-serif', color: '#8B7355' }}>
@@ -1443,12 +1471,32 @@ export default function AdminPage() {
                       </div>
                       {shop.shop_bio && <p style={{ font: '400 12px/1.5 Outfit,sans-serif', color: '#666', margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{shop.shop_bio}</p>}
                     </div>
-                    <button
-                      onClick={() => setEditShop(isEditing ? null : shop)}
-                      style={{ padding: '6px 14px', background: isEditing ? '#F07828' : 'transparent', color: isEditing ? '#fff' : '#8B7355', border: `1.5px solid ${isEditing ? '#F07828' : '#EEE9E0'}`, borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', flexShrink: 0 }}
-                    >
-                      {isEditing ? 'Cancel' : 'Edit'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {!isEditing && (
+                        <button
+                          onClick={() => handlePatch(shop.id, { verified_shop: !shop.verified_shop })}
+                          title={shop.verified_shop ? 'Remove verification' : 'Verify this shop'}
+                          style={{
+                            padding: '6px 10px', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            background: shop.verified_shop ? '#EDF7E2' : '#F7F4EF',
+                            color: shop.verified_shop ? '#5a9e2f' : '#8B7355',
+                            border: `1.5px solid ${shop.verified_shop ? '#7DC243' : '#EEE9E0'}`,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill={shop.verified_shop ? '#7DC243' : 'none'} stroke={shop.verified_shop ? '#7DC243' : '#8B7355'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-.45 3.31 3.745 3.745 0 01-3.312.45 3.745 3.745 0 01-3.068 1.59 3.745 3.745 0 01-3.068-1.59 3.745 3.745 0 01-3.31-.45 3.745 3.745 0 01-.45-3.31A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 01.45-3.31 3.745 3.745 0 013.312-.45 3.745 3.745 0 013.068-1.59 3.745 3.745 0 013.068 1.59 3.745 3.745 0 013.31.45 3.745 3.745 0 01.45 3.31A3.745 3.745 0 0121 12z"/>
+                          </svg>
+                          {shop.verified_shop ? 'Verified' : 'Verify'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setEditShop(isEditing ? null : shop)}
+                        style={{ padding: '6px 14px', background: isEditing ? '#F07828' : 'transparent', color: isEditing ? '#fff' : '#8B7355', border: `1.5px solid ${isEditing ? '#F07828' : '#EEE9E0'}`, borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer' }}
+                      >
+                        {isEditing ? 'Cancel' : 'Edit'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Edit panel */}
