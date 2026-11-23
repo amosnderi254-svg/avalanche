@@ -289,7 +289,7 @@ export default function ListingsPage() {
       }}>
 
         {/* Search row */}
-        <div style={{ padding: '12px 20px 10px', maxWidth: 1280, margin: '0 auto' }}>
+        <div className="container" style={{ paddingTop: 12, paddingBottom: 10 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -350,13 +350,12 @@ export default function ListingsPage() {
         </div>
 
         {/* Category pills - horizontal scroll */}
-        <div style={{
+        <div className="container" style={{
           overflowX: 'auto',
           scrollbarWidth: 'none',
           WebkitOverflowScrolling: 'touch',
-          padding: '0 20px 10px',
-          maxWidth: 1280,
-          margin: '0 auto',
+          paddingTop: 0,
+          paddingBottom: 10,
         }}>
           <div style={{ display: 'flex', gap: 6, minWidth: 'max-content' }}>
             {CATEGORIES.map(cat => {
@@ -397,14 +396,15 @@ export default function ListingsPage() {
         </div>
 
         {/* Filter bar */}
-        <div style={{ borderTop: '1px solid var(--border)', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ borderTop: '1px solid var(--border)' }}>
 
           {/* Desktop filter bar */}
-          <div className="filter-desktop" style={{
+          <div className="container filter-desktop" style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '8px 20px',
+            paddingTop: 8,
+            paddingBottom: 8,
             flexWrap: 'wrap',
           }}>
             {PRICE_PRESETS.map(preset => {
@@ -531,11 +531,12 @@ export default function ListingsPage() {
           </div>
 
           {/* Mobile filter bar */}
-          <div className="filter-mobile" style={{
+          <div className="container filter-mobile" style={{
             display: 'none',
             alignItems: 'center',
             gap: 8,
-            padding: '8px 20px',
+            paddingTop: 8,
+            paddingBottom: 8,
           }}>
             <button
               onClick={() => setShowFilters(true)}

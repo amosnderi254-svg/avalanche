@@ -23,11 +23,8 @@ export default function ActivityRail() {
     <div style={{
       borderBottom: '1px solid var(--border)',
       background: '#fff',
-      padding: '0 20px',
     }}>
-      <div style={{
-        maxWidth: 1200,
-        margin: '0 auto',
+      <div className="container" style={{
         height: 36,
         display: 'flex',
         alignItems: 'center',

@@ -114,14 +114,14 @@ export default function Home() {
       <section style={{
         background: '#fff',
         borderBottom: '1px solid var(--border)',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{
+        <div className="container" style={{
           display: 'flex',
           gap: 4,
           padding: '12px 20px',
-          minWidth: 'max-content',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
         }}>
           {CATEGORIES.map(cat => (
             <Link
