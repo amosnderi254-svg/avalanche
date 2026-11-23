@@ -317,6 +317,8 @@ export default function ListingsPage() {
               placeholder={category !== 'all' ? `Search ${catLabel.toLowerCase()}...` : 'Search bikes, strollers, toys...'}
               style={{
                 flex: 1,
+                minWidth: 0,
+                width: '100%',
                 height: 44,
                 border: 'none',
                 outline: 'none',

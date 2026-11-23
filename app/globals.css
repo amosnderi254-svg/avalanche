@@ -143,6 +143,7 @@ input, textarea, select { font-family: 'Outfit', sans-serif; }
 
 /* ── Page layout ──────────────────────────────────────── */
 .container {
+  width: 100%;
   max-width: 1160px;
   margin: 0 auto;
   padding: 0 20px;
