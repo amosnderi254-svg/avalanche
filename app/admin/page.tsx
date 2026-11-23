@@ -293,7 +293,17 @@ export default function AdminPage() {
   const [shops, setShops]               = useState<ShopRow[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [shopSearch, setShopSearch]     = useState('');
-  const [onboardForm, setOnboardForm]   = useState({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free', mpesa_ref: '' });
+  const BLANK_ONBOARD = {
+    // Step 1: Owner KYC
+    phone: '', owner_name: '', id_type: 'national_id' as 'national_id'|'passport'|'alien_id', id_number: '', email: '',
+    // Step 2: Shop profile
+    shop_name: '', kiosk_address: '', neighbourhood: '', operating_hours: '', categories: [] as string[], shop_bio: '',
+    // Step 3: Subscription
+    subscription_tier: 'free', billing_cycle: 'monthly' as 'monthly'|'annual',
+    subscription_start: new Date().toISOString().split('T')[0], mpesa_ref: '', admin_notes: '',
+  };
+  const [onboardForm, setOnboardForm]   = useState(BLANK_ONBOARD);
+  const [onboardStep, setOnboardStep]   = useState(1);
   const [onboardLoading, setOnboardLoading] = useState(false);
   const [onboardMsg, setOnboardMsg]     = useState('');
   const [editShop, setEditShop]         = useState<ShopRow | null>(null);
@@ -1286,7 +1296,7 @@ export default function AdminPage() {
         const data = await res.json();
         if (res.ok) {
           setOnboardMsg(`Shop ${data.action === 'promoted' ? 'promoted' : 'created'} successfully.`);
-          setOnboardForm({ phone: '', shop_name: '', shop_bio: '', neighbourhood: '', subscription_tier: 'free', mpesa_ref: '' });
+          setOnboardForm(BLANK_ONBOARD); setOnboardStep(1);
           fetchShops();
         } else {
           setOnboardMsg(`Error: ${data.error}`);
@@ -1318,93 +1328,220 @@ export default function AdminPage() {
           </span>
         </div>
 
-        {/* Onboard new shop */}
-        <div style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 16, padding: '24px', marginBottom: 28 }}>
-          <h2 style={{ font: '700 16px Outfit,sans-serif', color: '#1A1310', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-            </svg>
-            Onboard new shop
-          </h2>
-          <form onSubmit={handleOnboard}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Phone (required)</label>
-                <input
-                  type="text" placeholder="0712345678"
-                  value={onboardForm.phone}
-                  onChange={e => setOnboardForm(f => ({ ...f, phone: e.target.value }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-                />
+        {/* ── Onboard new shop: 3-step KYC wizard ── */}
+        {(() => {
+          const ITEM_CATS = ['Clothing & Shoes','Toys & Games','Books','Baby Gear','Strollers','Car Seats','Bicycles & Scooters','Electronics','Furniture','Feeding','Safety Gear','Sports & Outdoors'];
+          const fldStyle: React.CSSProperties = { width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box', background: '#fff' };
+          const lblStyle: React.CSSProperties = { display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 };
+          const toggleCat = (cat: string) => setOnboardForm(f => ({ ...f, categories: f.categories.includes(cat) ? f.categories.filter(c => c !== cat) : [...f.categories, cat] }));
+          const step1Ok = !!onboardForm.phone && !!onboardForm.owner_name && !!onboardForm.id_number;
+          const step2Ok = !!onboardForm.shop_name;
+          const stepColor = (s: number) => s === onboardStep ? '#F07828' : s < onboardStep ? '#7DC243' : '#EEE9E0';
+          const stepTxt   = (s: number) => s === onboardStep ? '#F07828' : s < onboardStep ? '#7DC243' : '#B09070';
+          const STEP_LABELS = ['Owner KYC','Shop Profile','Subscription'];
+          return (
+            <div style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 16, padding: 24, marginBottom: 28 }}>
+              {/* Header + step pills */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <h2 style={{ font: '700 16px Outfit,sans-serif', color: '#1A1310', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  Onboard new shop
+                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {[1,2,3].map((s, i) => (
+                    <React.Fragment key={s}>
+                      <div onClick={() => s < onboardStep && setOnboardStep(s)}
+                        style={{ width: 28, height: 28, borderRadius: '50%', background: stepColor(s), color: s <= onboardStep ? '#fff' : '#B09070', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 11px Outfit,sans-serif', cursor: s < onboardStep ? 'pointer' : 'default', flexShrink: 0, transition: 'background .2s' }}>
+                        {s < onboardStep ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : s}
+                      </div>
+                      {i < 2 && <div style={{ width: 24, height: 2, background: s < onboardStep ? '#7DC243' : '#EEE9E0', flexShrink: 0 }}/>}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop name (required)</label>
-                <input
-                  type="text" placeholder="e.g. Tiny Treasures Westlands"
-                  value={onboardForm.shop_name}
-                  onChange={e => setOnboardForm(f => ({ ...f, shop_name: e.target.value }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-                />
+              {/* Step label row */}
+              <div style={{ display: 'flex', marginBottom: 20, borderBottom: '1px solid #F0EBE2', paddingBottom: 10 }}>
+                {STEP_LABELS.map((lbl, i) => (
+                  <span key={lbl} style={{ flex: 1, textAlign: 'center', font: `${i+1 === onboardStep ? '600' : '400'} 11px Outfit,sans-serif`, color: stepTxt(i+1) }}>{lbl}</span>
+                ))}
               </div>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Neighbourhood</label>
-                <select
-                  value={onboardForm.neighbourhood}
-                  onChange={e => setOnboardForm(f => ({ ...f, neighbourhood: e.target.value }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-                >
-                  <option value="">Select area</option>
-                  {NAIROBI_HOODS_SHOPS.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Subscription tier</label>
-                <select
-                  value={onboardForm.subscription_tier}
-                  onChange={e => setOnboardForm(f => ({ ...f, subscription_tier: e.target.value }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-                >
-                  <option value="free">Free - 5 listings, KES 0/mo</option>
-                  <option value="starter">Starter - 30 listings, KES 999/mo</option>
-                  <option value="pro">Pro - Unlimited, KES 1,999/mo</option>
-                </select>
-              </div>
+
+              <form onSubmit={handleOnboard}>
+                {/* ── STEP 1: Owner KYC ── */}
+                {onboardStep === 1 && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={lblStyle}>Phone number <span style={{ color: '#E53935' }}>*</span></label>
+                        <input type="tel" placeholder="0712 345 678" value={onboardForm.phone} onChange={e => setOnboardForm(f => ({ ...f, phone: e.target.value }))} style={fldStyle}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Owner full legal name <span style={{ color: '#E53935' }}>*</span></label>
+                        <input type="text" placeholder="e.g. Jane Wanjiku Kamau" value={onboardForm.owner_name} onChange={e => setOnboardForm(f => ({ ...f, owner_name: e.target.value }))} style={fldStyle}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>ID type</label>
+                        <select value={onboardForm.id_type} onChange={e => setOnboardForm(f => ({ ...f, id_type: e.target.value as 'national_id'|'passport'|'alien_id' }))} style={fldStyle}>
+                          <option value="national_id">National ID</option>
+                          <option value="passport">Passport</option>
+                          <option value="alien_id">Alien ID / Work Permit</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>ID / Passport number <span style={{ color: '#E53935' }}>*</span></label>
+                        <input type="text" placeholder={onboardForm.id_type === 'passport' ? 'A12345678' : '12345678'} value={onboardForm.id_number} onChange={e => setOnboardForm(f => ({ ...f, id_number: e.target.value.toUpperCase() }))} style={{ ...fldStyle, font: '500 13px monospace', letterSpacing: '.04em' }}/>
+                      </div>
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <label style={lblStyle}>Email address <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(optional but recommended)</span></label>
+                        <input type="email" placeholder="jane@example.com" value={onboardForm.email} onChange={e => setOnboardForm(f => ({ ...f, email: e.target.value }))} style={fldStyle}/>
+                      </div>
+                    </div>
+                    <div style={{ background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: 8, padding: '10px 14px', font: '400 12px Outfit,sans-serif', color: '#8B6914', marginBottom: 14 }}>
+                      KYC data is stored for admin reference only and is not visible on the public shop profile.
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => setOnboardStep(2)} disabled={!step1Ok}
+                        style={{ padding: '8px 20px', background: step1Ok ? '#F07828' : '#EEE9E0', color: step1Ok ? '#fff' : '#B09070', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: step1Ok ? 'pointer' : 'not-allowed' }}>
+                        Next: Shop Profile
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 6, verticalAlign: 'middle' }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* ── STEP 2: Shop Profile ── */}
+                {onboardStep === 2 && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={lblStyle}>Shop / kiosk name <span style={{ color: '#E53935' }}>*</span></label>
+                        <input type="text" placeholder="e.g. Tiny Treasures Westlands" value={onboardForm.shop_name} onChange={e => setOnboardForm(f => ({ ...f, shop_name: e.target.value }))} style={fldStyle}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Neighbourhood</label>
+                        <select value={onboardForm.neighbourhood} onChange={e => setOnboardForm(f => ({ ...f, neighbourhood: e.target.value }))} style={fldStyle}>
+                          <option value="">Select area</option>
+                          {NAIROBI_HOODS_SHOPS.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <label style={lblStyle}>Physical kiosk / stall address</label>
+                        <input type="text" placeholder="e.g. Westgate Mall, Ground Floor, Stall G24" value={onboardForm.kiosk_address} onChange={e => setOnboardForm(f => ({ ...f, kiosk_address: e.target.value }))} style={fldStyle}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Operating hours</label>
+                        <input type="text" placeholder="Mon-Sat 8am-6pm" value={onboardForm.operating_hours} onChange={e => setOnboardForm(f => ({ ...f, operating_hours: e.target.value }))} style={fldStyle}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Shop tagline <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(one-liner)</span></label>
+                        <input type="text" placeholder="Quality pre-loved kids gear in Westlands" value={onboardForm.shop_bio} onChange={e => setOnboardForm(f => ({ ...f, shop_bio: e.target.value }))} style={fldStyle}/>
+                      </div>
+                    </div>
+                    {/* Category multi-select chips */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ ...lblStyle, marginBottom: 8 }}>Item categories sold <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(select all that apply)</span></label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                        {ITEM_CATS.map(cat => {
+                          const on = onboardForm.categories.includes(cat);
+                          return (
+                            <button key={cat} type="button" onClick={() => toggleCat(cat)}
+                              style={{ padding: '5px 11px', borderRadius: 20, background: on ? '#F07828' : '#F7F4EF', color: on ? '#fff' : '#8B7355', border: `1.5px solid ${on ? '#F07828' : '#EEE9E0'}`, font: `${on ? '600' : '500'} 12px Outfit,sans-serif`, cursor: 'pointer', transition: 'all .15s' }}>
+                              {cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <button type="button" onClick={() => setOnboardStep(1)} style={{ padding: '8px 16px', background: '#F7F4EF', color: '#8B7355', border: '1.5px solid #EEE9E0', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6, verticalAlign: 'middle' }}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        Back
+                      </button>
+                      <button type="button" onClick={() => setOnboardStep(3)} disabled={!step2Ok}
+                        style={{ padding: '8px 20px', background: step2Ok ? '#F07828' : '#EEE9E0', color: step2Ok ? '#fff' : '#B09070', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: step2Ok ? 'pointer' : 'not-allowed' }}>
+                        Next: Subscription
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 6, verticalAlign: 'middle' }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* ── STEP 3: Subscription + Confirm ── */}
+                {onboardStep === 3 && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                      <div>
+                        <label style={lblStyle}>Subscription tier</label>
+                        <select value={onboardForm.subscription_tier} onChange={e => setOnboardForm(f => ({ ...f, subscription_tier: e.target.value }))} style={fldStyle}>
+                          <option value="free">Free - 5 listings, KES 0/mo</option>
+                          <option value="starter">Starter - 30 listings, KES 999/mo</option>
+                          <option value="pro">Pro - Unlimited, KES 1,999/mo</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Billing cycle</label>
+                        <select value={onboardForm.billing_cycle} onChange={e => setOnboardForm(f => ({ ...f, billing_cycle: e.target.value as 'monthly'|'annual' }))} style={fldStyle} disabled={onboardForm.subscription_tier === 'free'}>
+                          <option value="monthly">Monthly</option>
+                          <option value="annual">Annual (2 months free)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>Subscription start date</label>
+                        <input type="date" value={onboardForm.subscription_start} onChange={e => setOnboardForm(f => ({ ...f, subscription_start: e.target.value }))} style={fldStyle} disabled={onboardForm.subscription_tier === 'free'}/>
+                      </div>
+                      <div>
+                        <label style={lblStyle}>M-Pesa transaction ref <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>{onboardForm.subscription_tier !== 'free' ? '(required)' : '(N/A for free)'}</span></label>
+                        <input type="text" placeholder="e.g. QKL1AB2CD3" value={onboardForm.mpesa_ref} onChange={e => setOnboardForm(f => ({ ...f, mpesa_ref: e.target.value.toUpperCase() }))} style={{ ...fldStyle, font: '500 13px monospace', letterSpacing: '.06em' }} disabled={onboardForm.subscription_tier === 'free'}/>
+                      </div>
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <label style={lblStyle}>Admin notes <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(internal only)</span></label>
+                        <textarea placeholder="e.g. Met at Westgate fair, sells premium imported clothing. Referred by shop #3." value={onboardForm.admin_notes} onChange={e => setOnboardForm(f => ({ ...f, admin_notes: e.target.value }))} rows={2} style={{ ...fldStyle, height: 'auto', padding: '8px 12px', resize: 'vertical' }}/>
+                      </div>
+                    </div>
+
+                    {/* Summary review panel */}
+                    <div style={{ background: '#F7F4EF', border: '1px solid #EEE9E0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                      <div style={{ font: '600 12px Outfit,sans-serif', color: '#8B7355', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Review</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', font: '400 12px Outfit,sans-serif', color: '#8B7355' }}>
+                        <div><span style={{ color: '#B09070' }}>Owner: </span><strong style={{ color: '#1A1310' }}>{onboardForm.owner_name}</strong></div>
+                        <div><span style={{ color: '#B09070' }}>Phone: </span><strong style={{ color: '#1A1310' }}>{onboardForm.phone}</strong></div>
+                        <div><span style={{ color: '#B09070' }}>ID ({onboardForm.id_type.replace(/_/g,' ')}): </span><strong style={{ color: '#1A1310', fontFamily: 'monospace' }}>{onboardForm.id_number}</strong></div>
+                        {onboardForm.email && <div><span style={{ color: '#B09070' }}>Email: </span><strong style={{ color: '#1A1310' }}>{onboardForm.email}</strong></div>}
+                        <div><span style={{ color: '#B09070' }}>Shop: </span><strong style={{ color: '#1A1310' }}>{onboardForm.shop_name}</strong></div>
+                        <div><span style={{ color: '#B09070' }}>Area: </span><strong style={{ color: '#1A1310' }}>{onboardForm.neighbourhood || 'Not set'}</strong></div>
+                        {onboardForm.kiosk_address && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#B09070' }}>Location: </span><strong style={{ color: '#1A1310' }}>{onboardForm.kiosk_address}</strong></div>}
+                        {onboardForm.categories.length > 0 && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#B09070' }}>Categories: </span><strong style={{ color: '#1A1310' }}>{onboardForm.categories.join(', ')}</strong></div>}
+                        <div>
+                          <span style={{ color: '#B09070' }}>Plan: </span>
+                          <strong style={{ color: onboardForm.subscription_tier === 'pro' ? '#7DC243' : onboardForm.subscription_tier === 'starter' ? '#F07828' : '#8B7355' }}>
+                            {onboardForm.subscription_tier === 'pro' ? 'Pro' : onboardForm.subscription_tier === 'starter' ? 'Starter' : 'Free'}
+                            {onboardForm.subscription_tier !== 'free' && ` / ${onboardForm.billing_cycle}`}
+                          </strong>
+                        </div>
+                        {onboardForm.subscription_tier !== 'free' && onboardForm.mpesa_ref && <div><span style={{ color: '#B09070' }}>M-Pesa ref: </span><strong style={{ color: '#1A1310', fontFamily: 'monospace' }}>{onboardForm.mpesa_ref}</strong></div>}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <button type="button" onClick={() => setOnboardStep(2)} style={{ padding: '8px 16px', background: '#F7F4EF', color: '#8B7355', border: '1.5px solid #EEE9E0', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6, verticalAlign: 'middle' }}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        Back
+                      </button>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        {onboardMsg && <span style={{ font: '500 13px Outfit,sans-serif', color: onboardMsg.startsWith('Error') ? '#E53935' : '#7DC243' }}>{onboardMsg}</span>}
+                        <button type="submit" disabled={onboardLoading}
+                          style={{ padding: '8px 22px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          {onboardLoading ? 'Onboarding...' : 'Complete onboarding'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </form>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>Shop bio</label>
-                <input
-                  type="text" placeholder="One-line shop description"
-                  value={onboardForm.shop_bio}
-                  onChange={e => setOnboardForm(f => ({ ...f, shop_bio: e.target.value }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '400 14px Outfit,sans-serif', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', font: '500 12px Outfit,sans-serif', color: '#8B7355', marginBottom: 5 }}>
-                  M-Pesa ref <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(if paid tier)</span>
-                </label>
-                <input
-                  type="text" placeholder="e.g. QKL1AB2CD3"
-                  value={onboardForm.mpesa_ref}
-                  onChange={e => setOnboardForm(f => ({ ...f, mpesa_ref: e.target.value.toUpperCase() }))}
-                  style={{ width: '100%', height: 38, border: '1.5px solid #EEE9E0', borderRadius: 8, padding: '0 12px', font: '500 13px monospace', letterSpacing: '.06em', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button type="submit" disabled={onboardLoading}
-                style={{ padding: '8px 20px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 8, font: '600 13px Outfit,sans-serif', cursor: 'pointer' }}>
-                {onboardLoading ? 'Onboarding...' : 'Onboard shop'}
-              </button>
-              {onboardMsg && (
-                <span style={{ font: '500 13px Outfit,sans-serif', color: onboardMsg.startsWith('Error') ? '#E53935' : '#7DC243' }}>
-                  {onboardMsg}
-                </span>
-              )}
-            </div>
-          </form>
-        </div>
+          );
+        })()}
 
         {/* Search */}
         <div style={{ position: 'relative', marginBottom: 20 }}>

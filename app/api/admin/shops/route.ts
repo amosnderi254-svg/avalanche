@@ -82,11 +82,36 @@ export async function POST(req: NextRequest) {
   if (!authResult.ok) return NextResponse.json({ error: authResult.message }, { status: authResult.status });
 
   const body = await req.json();
-  const { phone, shop_name, shop_bio, neighbourhood, subscription_tier } = body;
+  const {
+    phone, shop_name, shop_bio, neighbourhood, subscription_tier,
+    owner_name, id_type, id_number, email,
+    kiosk_address, operating_hours, categories,
+    billing_cycle, subscription_start, mpesa_ref, admin_notes,
+  } = body;
 
   if (!phone || !shop_name) {
     return NextResponse.json({ error: 'phone and shop_name required' }, { status: 400 });
   }
+
+  // Calculate subscription_expires_at from start date + billing cycle
+  function calcExpiry(start: string | undefined, tier: string, cycle: string): string | null {
+    if (!tier || tier === 'free') return null;
+    const base = start ? new Date(start) : new Date();
+    const days  = cycle === 'annual' ? 365 : 30;
+    base.setDate(base.getDate() + days);
+    return base.toISOString();
+  }
+  const subscription_expires_at = calcExpiry(subscription_start, subscription_tier, billing_cycle || 'monthly');
+
+  // Build a structured shop_bio that includes KYC notes if no dedicated column exists
+  const enrichedBio = [
+    shop_bio || null,
+    kiosk_address ? `Location: ${kiosk_address}` : null,
+    operating_hours ? `Hours: ${operating_hours}` : null,
+  ].filter(Boolean).join(' | ') || null;
+
+  // Build admin-readable shop_areas from categories until a dedicated column is added
+  const shopAreas: string[] = Array.isArray(categories) && categories.length > 0 ? categories : [];
 
   const normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '254');
   const supabase = createAdminClient();
@@ -104,9 +129,12 @@ export async function POST(req: NextRequest) {
       .from('seller_profiles')
       .update({
         is_shop: true,
+        display_name: owner_name || existing.display_name,
         shop_name,
-        shop_bio: shop_bio || null,
+        shop_bio: enrichedBio,
+        shop_areas: shopAreas,
         subscription_tier: subscription_tier || 'free',
+        subscription_expires_at,
         verified_shop: false,
       })
       .eq('id', existing.id)
@@ -115,7 +143,7 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     void sendShopWelcomeWA(data, 'promoted');
-    void notifyAdminNewShop(data, 'promoted');
+    void notifyAdminNewShop(data, 'promoted', { owner_name, id_type, id_number, email, mpesa_ref, admin_notes });
     return NextResponse.json({ shop: data, action: 'promoted' });
   }
 
@@ -131,36 +159,47 @@ export async function POST(req: NextRequest) {
     .from('seller_profiles')
     .insert({
       phone: normalizedPhone,
-      display_name: shop_name,
+      display_name: owner_name || shop_name,
       profile_slug,
       neighbourhood: neighbourhood || null,
       is_shop: true,
       shop_name,
-      shop_bio: shop_bio || null,
+      shop_bio: enrichedBio,
+      shop_areas: shopAreas,
       subscription_tier: subscription_tier || 'free',
+      subscription_expires_at,
       verified_shop: false,
       total_sold: 0,
-      shop_areas: [],
     })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   void sendShopWelcomeWA(data, 'created');
-  void notifyAdminNewShop(data, 'created');
+  void notifyAdminNewShop(data, 'created', { owner_name, id_type, id_number, email, mpesa_ref, admin_notes });
   return NextResponse.json({ shop: data, action: 'created' });
 }
 
 // ── ntfy admin alert on new shop ─────────────────────────────────────────────
 async function notifyAdminNewShop(
   shop: { phone: string; shop_name: string; profile_slug: string; neighbourhood?: string | null; subscription_tier: string },
-  action: 'created' | 'promoted'
+  action: 'created' | 'promoted',
+  kyc?: { owner_name?: string; id_type?: string; id_number?: string; email?: string; mpesa_ref?: string; admin_notes?: string }
 ) {
   const channel = process.env.ADMIN_NOTIFY_CHANNEL;
   if (!channel) return;
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
   const shopUrl = `${appUrl}/sellers/${shop.profile_slug}`;
   const label   = action === 'promoted' ? 'Seller promoted to shop' : 'New shop onboarded';
+  const kycLine = kyc?.owner_name ? `Owner: ${kyc.owner_name}` + (kyc.id_number ? ` | ID: ${kyc.id_number}` : '') : '';
+  const lines = [
+    `${shop.shop_name} | ${shop.subscription_tier} plan`,
+    `Phone: ${shop.phone}${shop.neighbourhood ? ` | ${shop.neighbourhood}` : ''}`,
+    kycLine,
+    kyc?.email ? `Email: ${kyc.email}` : '',
+    kyc?.mpesa_ref ? `M-Pesa: ${kyc.mpesa_ref}` : '',
+    kyc?.admin_notes ? `Notes: ${kyc.admin_notes}` : '',
+  ].filter(Boolean).join('\n');
   fetch(`https://ntfy.sh/${channel}`, {
     method: 'POST',
     headers: {
@@ -170,7 +209,7 @@ async function notifyAdminNewShop(
       'Content-Type': 'text/plain',
       'Actions': `view, View shop, ${shopUrl}; view, Admin, ${appUrl}/admin`,
     },
-    body: `${shop.shop_name} | ${shop.subscription_tier} plan\nPhone: ${shop.phone}${shop.neighbourhood ? ` | ${shop.neighbourhood}` : ''}`,
+    body: lines,
   }).catch(() => {});
 }
 
