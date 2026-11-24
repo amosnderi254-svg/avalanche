@@ -148,6 +148,7 @@ export default function HeroSearch() {
       {/* ── Search bar ─────────────────────────────── */}
       <form onSubmit={handleSubmit} role="search">
         <div
+          className="hs-bar"
           style={{
             display: 'flex',
             border: open ? '1.5px solid rgba(240,120,40,.35)' : '1.5px solid rgba(240,120,40,.15)',
@@ -163,9 +164,9 @@ export default function HeroSearch() {
           }}
         >
           {/* Search icon / spinner */}
-          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 20, flexShrink: 0 }}>
+          <div className="hs-icon-wrap" style={{ display: 'flex', alignItems: 'center', paddingLeft: 18, flexShrink: 0 }}>
             {loading ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 2a10 10 0 010 20" stroke="#F07828" strokeWidth="2.5" strokeLinecap="round">
                   <animateTransform
                     attributeName="transform" type="rotate"
@@ -175,7 +176,7 @@ export default function HeroSearch() {
                 </path>
               </svg>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke={open ? '#F07828' : '#aaa'} strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round"
                 style={{ transition: 'stroke .2s' }} aria-hidden="true"
@@ -201,14 +202,15 @@ export default function HeroSearch() {
             aria-label="Search listings"
             aria-expanded={showDropdown}
             aria-autocomplete="list"
+            className="hs-input"
             style={{
               flex: 1,
               border: 'none',
               outline: 'none',
-              font: '500 17px/1 Outfit,sans-serif',
+              font: '500 16px/1 Outfit,sans-serif',
               color: '#1A1A1A',
               background: 'transparent',
-              padding: '20px 10px',
+              padding: '18px 8px',
               minWidth: 0,
             }}
           />
@@ -221,9 +223,9 @@ export default function HeroSearch() {
               aria-label="Clear search"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 32, height: 32,
-                margin: 'auto 6px',
-                background: '#f0f0f0',
+                width: 28, height: 28,
+                margin: 'auto 4px',
+                background: 'rgba(0,0,0,.08)',
                 border: 'none',
                 borderRadius: '50%',
                 cursor: 'pointer',
@@ -231,7 +233,7 @@ export default function HeroSearch() {
                 color: '#666',
               }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
               >
                 <line x1="18" y1="6" x2="6" y2="18"/>
@@ -240,11 +242,16 @@ export default function HeroSearch() {
             </button>
           )}
 
-          {/* Search button */}
+          {/* Search button — text on desktop, icon on mobile */}
           <button
             type="submit"
+            className="hs-btn"
             style={{
-              padding: '0 30px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '0 26px',
               background: '#F07828',
               color: '#fff',
               border: 'none',
@@ -253,9 +260,17 @@ export default function HeroSearch() {
               letterSpacing: '.01em',
               flexShrink: 0,
               transition: 'background .15s',
+              whiteSpace: 'nowrap',
             }}
           >
-            Search
+            <svg className="hs-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <span className="hs-btn-label">Search</span>
           </button>
         </div>
       </form>
@@ -487,6 +502,36 @@ export default function HeroSearch() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .hs-row:hover { background: #FFF9F5 !important; }
+        .hs-btn:hover { background: #d9661f !important; }
+
+        /* ── Mobile: compact search bar ───────────────── */
+        @media (max-width: 640px) {
+          /* Tighter bar overall */
+          .hs-bar { border-radius: 12px !important; }
+
+          /* Icon area */
+          .hs-icon-wrap { padding-left: 13px !important; }
+
+          /* Input: smaller font + padding so bar sits at ~48px tall */
+          .hs-input {
+            font-size: 14px !important;
+            padding: 14px 6px !important;
+          }
+
+          /* Button: square icon-only on mobile */
+          .hs-btn {
+            padding: 0 16px !important;
+            min-width: 48px;
+          }
+          .hs-btn-label { display: none; }
+          .hs-btn-icon  { display: block !important; }
+        }
+
+        /* ── Desktop: hide standalone icon, show label ─ */
+        @media (min-width: 641px) {
+          .hs-btn-icon { display: none; }
+          .hs-btn-label { display: inline; }
+        }
       `}</style>
     </div>
   );

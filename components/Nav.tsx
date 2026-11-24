@@ -86,6 +86,7 @@ export default function Nav() {
           alignItems: 'center',
           gap: 8,
           maxWidth: searchActive ? '100%' : 420,
+          minWidth: 0,
         }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <svg
@@ -97,7 +98,7 @@ export default function Nav() {
             <input
               ref={inputRef}
               type="search"
-              placeholder="Search bikes, strollers, toys..."
+              placeholder="Search items..."
               value={query}
               onChange={e => setQuery(e.target.value)}
               onFocus={() => setSearchActive(true)}
