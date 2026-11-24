@@ -16,7 +16,7 @@ export default function Footer() {
       borderTop: '1px solid var(--border)',
       background: '#fafaf8',
     }}>
-      <div className="container" style={{ padding: '48px 0 24px' }}>
+      <div className="container" style={{ paddingTop: '48px', paddingBottom: '24px' }}>
 
         {/* Top row */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', marginBottom: 36 }}>

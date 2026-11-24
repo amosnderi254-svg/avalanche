@@ -49,7 +49,7 @@ export default async function ListingPage({ params }: Props) {
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '24px 0 80px', maxWidth: 800 }}>
+      <div className="container" style={{ paddingTop: '24px', paddingBottom: '80px', maxWidth: 800 }}>
         {/* Breadcrumb */}
         <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 20px' }}>
           <Link href="/" style={{ color: 'var(--text-3)' }}>Home</Link>

@@ -262,7 +262,7 @@ export default function EditProfilePage() {
   return (
     <>
       <Nav />
-      <div className="container" style={{ padding: '32px 0 80px', maxWidth: 640 }}>
+      <div className="container" style={{ paddingTop: '32px', paddingBottom: '80px', maxWidth: 640 }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ font: '700 26px Outfit,sans-serif', color: 'var(--text-1)', margin: '0 0 6px' }}>
             Edit your profile
@@ -272,7 +272,7 @@ export default function EditProfilePage() {
           </p>
         </div>
         <Suspense fallback={
-          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+          <div style={{ paddingTop: '60px', paddingBottom: '60px', textAlign: 'center' }}>
             <div style={{ width: 32, height: 32, border: '3px solid #f0f0f0', borderTopColor: 'var(--orange)', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }}/>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>

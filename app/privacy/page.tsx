@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '40px 0 80px', maxWidth: 720 }}>
+      <div className="container" style={{ paddingTop: '40px', paddingBottom: '80px', maxWidth: 720 }}>
         <h1 style={{ font: '700 28px Outfit,sans-serif', margin: '0 0 6px' }}>Privacy Policy</h1>
         <p style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 36px' }}>
           Last updated: November 2024

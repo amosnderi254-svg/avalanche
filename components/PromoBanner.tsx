@@ -55,10 +55,11 @@ export default function PromoBanner() {
           backgroundSize: '300% 300%',
           animation: 'mtv-grad 6s ease infinite, mtv-fadein .4s ease both',
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 14,
-          padding: '11px 52px 11px 20px',
+          gap: '8px 12px',
+          padding: '10px 48px 10px 16px',
           position: 'relative',
           minHeight: 46,
           overflow: 'hidden',
@@ -86,6 +87,7 @@ export default function PromoBanner() {
           letterSpacing: '.01em',
           position: 'relative',
           zIndex: 1,
+          minWidth: 0,
         }}>
           Don&apos;t throw it away.{' '}
           <span style={{ fontWeight: 700 }}>

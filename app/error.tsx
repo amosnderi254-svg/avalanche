@@ -16,7 +16,7 @@ export default function ErrorPage({ error, reset }: Props) {
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '80px 0', textAlign: 'center', maxWidth: 480 }}>
+      <div className="container" style={{ paddingTop: '80px', paddingBottom: '80px', textAlign: 'center', maxWidth: 480 }}>
         <div style={{
           width: 72, height: 72,
           borderRadius: '50%',

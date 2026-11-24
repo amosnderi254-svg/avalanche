@@ -127,7 +127,7 @@ export default async function BlogPage() {
       {/* Hero band */}
       <section style={{
         background: 'linear-gradient(135deg,#FFF5EE 0%,#F0FBE8 100%)',
-        padding: '48px 0 40px',
+        paddingTop: '48px', paddingBottom: '40px',
         borderBottom: '1px solid var(--border)',
       }}>
         <div className="container" style={{ textAlign: 'center' }}>
@@ -144,7 +144,7 @@ export default async function BlogPage() {
         </div>
       </section>
 
-      <div className="container" style={{ padding: '40px 0 80px' }}>
+      <div className="container" style={{ paddingTop: '40px', paddingBottom: '80px' }}>
 
         {articles.length === 0 ? (
           // Empty state
@@ -333,7 +333,7 @@ export default async function BlogPage() {
       </div>
 
       {/* Footer CTA */}
-      <section style={{ background: 'linear-gradient(135deg,#FFF5EE 0%,#F0FBE8 100%)', borderTop: '1px solid var(--border)', padding: '48px 0' }}>
+      <section style={{ background: 'linear-gradient(135deg,#FFF5EE 0%,#F0FBE8 100%)', borderTop: '1px solid var(--border)', paddingTop: '48px', paddingBottom: '48px' }}>
         <div className="container" style={{ textAlign: 'center' }}>
           <h2 style={{ font: '700 26px Outfit,sans-serif', margin: '0 0 10px' }}>
             Ready to declutter?

@@ -54,7 +54,7 @@ export default function SavedPage() {
     return (
       <>
         <Nav/>
-        <div className="container" style={{ padding: '40px 0' }}>
+        <div className="container" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} style={{ borderRadius: 'var(--r-md)', background: '#f5f4f2', paddingTop: '66%' }}/>
@@ -68,7 +68,7 @@ export default function SavedPage() {
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '28px 0 80px' }}>
+      <div className="container" style={{ paddingTop: '28px', paddingBottom: '80px' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>

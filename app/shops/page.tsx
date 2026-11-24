@@ -126,7 +126,7 @@ export default async function ShopsPage(
       <div className="container" style={{ padding: '0 0 80px' }}>
 
         {/* Hero */}
-        <div className="shops-hero" style={{ padding: '48px 0 32px', textAlign: 'center' }}>
+        <div className="shops-hero" style={{ paddingTop: '48px', paddingBottom: '32px', textAlign: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#FEF3E8', borderRadius: 'var(--r-pill)', padding: '6px 16px', marginBottom: 16 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>

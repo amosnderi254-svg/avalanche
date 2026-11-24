@@ -65,7 +65,7 @@ function ProgressBar({ current }: { current: Step }) {
                 <span style={{ font: '700 12px Outfit,sans-serif', color: i === idx ? '#fff' : '#aaa' }}>{i + 1}</span>
               )}
             </div>
-            <span style={{ font: `${i === idx ? '600' : '400'} 11px Outfit,sans-serif`, color: i === idx ? 'var(--text-1)' : 'var(--text-3)', whiteSpace: 'nowrap' }}>
+            <span className="hide-mobile" style={{ font: `${i === idx ? '600' : '400'} 11px Outfit,sans-serif`, color: i === idx ? 'var(--text-1)' : 'var(--text-3)', whiteSpace: 'nowrap' }}>
               {s.label}
             </span>
           </div>
@@ -513,7 +513,7 @@ export default function SellPage() {
       <Nav/>
 
       {/* Page header */}
-      <div style={{ background: 'var(--text-1)', padding: '32px 0 28px' }}>
+      <div style={{ background: 'var(--text-1)', paddingTop: '32px', paddingBottom: '28px' }}>
         <div className="container" style={{ maxWidth: 640 }}>
           <p style={{ font: '600 11px Outfit,sans-serif', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 8px' }}>
             Sell on MyTinyverse
@@ -528,7 +528,7 @@ export default function SellPage() {
       </div>
 
       {/* Fee strip */}
-      <div style={{ background: '#fff4ec', borderBottom: '1px solid #ffd9b8', padding: '10px 0' }}>
+      <div style={{ background: '#fff4ec', borderBottom: '1px solid #ffd9b8', paddingTop: '10px', paddingBottom: '10px' }}>
         <div className="container" style={{ maxWidth: 640 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -547,7 +547,7 @@ export default function SellPage() {
         </div>
       </div>
 
-      <div className="container" style={{ maxWidth: 640, padding: '36px 0 80px' }}>
+      <div className="container" style={{ maxWidth: 640, paddingTop: '36px', paddingBottom: '80px' }}>
 
         <ProgressBar current={step} />
 

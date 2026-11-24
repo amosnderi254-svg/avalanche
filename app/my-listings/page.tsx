@@ -197,7 +197,7 @@ export default function MyListingsPage() {
       <Nav/>
 
       {/* Page header */}
-      <div style={{ background: 'var(--text-1)', padding: '32px 0 28px' }}>
+      <div style={{ background: 'var(--text-1)', paddingTop: '32px', paddingBottom: '28px' }}>
         <div className="container" style={{ maxWidth: 760 }}>
           <p style={{ font: '600 11px Outfit,sans-serif', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '.09em', margin: '0 0 8px' }}>
             Seller dashboard
@@ -211,7 +211,7 @@ export default function MyListingsPage() {
         </div>
       </div>
 
-      <div className="container" style={{ maxWidth: 760, padding: '36px 0 80px' }}>
+      <div className="container" style={{ maxWidth: 760, paddingTop: '36px', paddingBottom: '80px' }}>
 
         {/* Phone lookup form — shown when no phone is known or user wants to change */}
         <form onSubmit={handleSubmit} style={{ marginBottom: listings.length > 0 || loading ? 32 : 0 }}>
@@ -269,7 +269,7 @@ export default function MyListingsPage() {
 
         {/* Loading */}
         {loading && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ textAlign: 'center', paddingTop: '60px', paddingBottom: '60px' }}>
             <div style={{ width: 36, height: 36, border: '3px solid #f0f0f0', borderTopColor: '#F07828', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin .8s linear infinite' }}/>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
             <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)' }}>Loading your listings...</p>
@@ -278,7 +278,7 @@ export default function MyListingsPage() {
 
         {/* No listings */}
         {!loading && phone && listings.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ textAlign: 'center', paddingTop: '60px', paddingBottom: '60px' }}>
             <div style={{ width: 60, height: 60, background: '#f5f4f2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>

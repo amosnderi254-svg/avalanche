@@ -59,7 +59,7 @@ export default function ListingStatusPage({ params }: { params: { id: string } }
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '48px 0 80px', maxWidth: 480, textAlign: 'center' }}>
+      <div className="container" style={{ paddingTop: '48px', paddingBottom: '80px', maxWidth: 480, textAlign: 'center' }}>
 
         {loading && (
           <div style={{ padding: 60 }}>

@@ -170,7 +170,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         </nav>
       </div>
 
-      <div className="container" style={{ padding: '28px 0 80px', maxWidth: 1100, display: 'grid', gridTemplateColumns: '1fr min(660px,100%) 1fr', columnGap: 0 }}>
+      <div className="container" style={{ paddingTop: '28px', paddingBottom: '80px', maxWidth: 1100, display: 'grid', gridTemplateColumns: '1fr min(660px,100%) 1fr', columnGap: 0 }}>
         {/* Spacer */}
         <div/>
 

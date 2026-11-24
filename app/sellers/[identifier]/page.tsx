@@ -191,7 +191,7 @@ function renderShopPage(profile: SellerProfile, listings: ListingSnippet[], list
 
       <Nav/>
 
-      <div className="container" style={{ padding: '20px 0 80px', maxWidth: 960 }}>
+      <div className="container" style={{ paddingTop: '20px', paddingBottom: '80px', maxWidth: 960 }}>
         {/* Breadcrumb */}
         <nav style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', marginBottom: 20 }}>
           <Link href="/" style={{ color: 'var(--text-3)' }}>Home</Link>
@@ -422,7 +422,7 @@ function renderSellerPage(profile: SellerProfile, listings: ListingSnippet[], li
 
       <Nav/>
 
-      <div className="container" style={{ padding: '20px 0 80px', maxWidth: 960 }}>
+      <div className="container" style={{ paddingTop: '20px', paddingBottom: '80px', maxWidth: 960 }}>
         {/* Breadcrumb */}
         <nav style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', marginBottom: 24 }}>
           <Link href="/" style={{ color: 'var(--text-3)' }}>Home</Link>

@@ -176,7 +176,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     return (
       <>
         <Nav/>
-        <div className="container" style={{ padding: '60px 0', textAlign: 'center', maxWidth: 480 }}>
+        <div className="container" style={{ paddingTop: '60px', paddingBottom: '60px', textAlign: 'center', maxWidth: 480 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#E8F5E9', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
@@ -202,7 +202,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     return (
       <>
         <Nav/>
-        <div className="container" style={{ padding: '60px 0', textAlign: 'center', maxWidth: 480 }}>
+        <div className="container" style={{ paddingTop: '60px', paddingBottom: '60px', textAlign: 'center', maxWidth: 480 }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FFEBEE', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c62828" strokeWidth="2">
               <circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>
@@ -230,7 +230,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     return (
       <>
         <Nav/>
-        <div className="container" style={{ padding: '60px 0', textAlign: 'center' }}>
+        <div className="container" style={{ paddingTop: '60px', paddingBottom: '60px', textAlign: 'center' }}>
           <div className="spinner" style={{ margin: '0 auto' }}/>
         </div>
       </>
@@ -242,7 +242,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   return (
     <>
       <Nav/>
-      <div className="container" style={{ padding: '28px 0 80px', maxWidth: 560 }}>
+      <div className="container" style={{ paddingTop: '28px', paddingBottom: '80px', maxWidth: 560 }}>
         <h1 style={{ font: '700 24px Outfit,sans-serif', margin: '0 0 6px' }}>Edit listing</h1>
         <p style={{ font: '400 14px Outfit,sans-serif', color: 'var(--text-3)', margin: '0 0 6px' }}>
           You can edit your listing while it's pending review.
