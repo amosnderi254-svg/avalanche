@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
 import { checkAdminPin } from '@/lib/admin-auth';
 import { getClientIp } from '@/lib/rate-limit';
+import { hashPin } from '@/lib/shop-auth';
 
 // ── GET /api/admin/shops  -- list all shops ───────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -60,6 +61,15 @@ export async function PATCH(req: NextRequest) {
     if (key in updates) patch[key] = updates[key];
   }
 
+  // Handle PIN reset separately (must be hashed)
+  if (updates.shop_pin) {
+    const rawPin = String(updates.shop_pin);
+    if (rawPin.length < 4 || rawPin.length > 8) {
+      return NextResponse.json({ error: 'shop_pin must be 4-8 digits' }, { status: 400 });
+    }
+    patch.shop_pin = await hashPin(rawPin);
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
   }
@@ -87,10 +97,20 @@ export async function POST(req: NextRequest) {
     owner_name, id_type, id_number, email,
     kiosk_address, operating_hours, categories,
     billing_cycle, subscription_start, mpesa_ref, admin_notes,
+    shop_pin,
   } = body;
 
   if (!phone || !shop_name) {
     return NextResponse.json({ error: 'phone and shop_name required' }, { status: 400 });
+  }
+
+  // Hash PIN if provided
+  let hashedPin: string | null = null;
+  if (shop_pin) {
+    if (typeof shop_pin !== 'string' || shop_pin.length < 4 || shop_pin.length > 8) {
+      return NextResponse.json({ error: 'shop_pin must be 4-8 digits' }, { status: 400 });
+    }
+    hashedPin = await hashPin(shop_pin);
   }
 
   // Calculate subscription_expires_at from start date + billing cycle
@@ -125,18 +145,21 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     // Promote existing profile to shop
+    const promotePayload: Record<string, unknown> = {
+      is_shop: true,
+      display_name: owner_name || existing.display_name,
+      shop_name,
+      shop_bio: enrichedBio,
+      shop_areas: shopAreas,
+      subscription_tier: subscription_tier || 'free',
+      subscription_expires_at,
+      verified_shop: false,
+    };
+    if (hashedPin) promotePayload.shop_pin = hashedPin;
+
     const { data, error } = await supabase
       .from('seller_profiles')
-      .update({
-        is_shop: true,
-        display_name: owner_name || existing.display_name,
-        shop_name,
-        shop_bio: enrichedBio,
-        shop_areas: shopAreas,
-        subscription_tier: subscription_tier || 'free',
-        subscription_expires_at,
-        verified_shop: false,
-      })
+      .update(promotePayload)
       .eq('id', existing.id)
       .select()
       .single();
@@ -155,22 +178,25 @@ export async function POST(req: NextRequest) {
     .slice(0, 60);
   const profile_slug = `${slugBase}-${Math.random().toString(16).slice(2, 6)}`;
 
+  const insertPayload: Record<string, unknown> = {
+    phone: normalizedPhone,
+    display_name: owner_name || shop_name,
+    profile_slug,
+    neighbourhood: neighbourhood || null,
+    is_shop: true,
+    shop_name,
+    shop_bio: enrichedBio,
+    shop_areas: shopAreas,
+    subscription_tier: subscription_tier || 'free',
+    subscription_expires_at,
+    verified_shop: false,
+    total_sold: 0,
+  };
+  if (hashedPin) insertPayload.shop_pin = hashedPin;
+
   const { data, error } = await supabase
     .from('seller_profiles')
-    .insert({
-      phone: normalizedPhone,
-      display_name: owner_name || shop_name,
-      profile_slug,
-      neighbourhood: neighbourhood || null,
-      is_shop: true,
-      shop_name,
-      shop_bio: enrichedBio,
-      shop_areas: shopAreas,
-      subscription_tier: subscription_tier || 'free',
-      subscription_expires_at,
-      verified_shop: false,
-      total_sold: 0,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
