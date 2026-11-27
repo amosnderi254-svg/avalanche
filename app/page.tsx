@@ -8,6 +8,7 @@ import HeroSlider from '@/components/HeroSlider';
 import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
+import RecentlySoldTicker from '@/components/RecentlySoldTicker';
 
 
 export const dynamic = 'force-dynamic';
@@ -104,6 +105,9 @@ export default function Home() {
 
       {/* ── Live stat strip (Feature 8 — minimal) ─────────── */}
       <ActivityRail />
+
+      {/* ── Recently Sold Ticker ─────────────────────────── */}
+      <RecentlySoldTicker />
 
       {/* ── Listings ─────────────────────────────────────── */}
       <div id="listings" style={{ background: 'var(--bg, #FFFDF9)' }}>
