@@ -45,8 +45,16 @@ export async function POST(req: NextRequest) {
   if (!phone || !pin) return NextResponse.json({ error: 'Phone and PIN required' }, { status: 400 });
   if (!/^\d{4,8}$/.test(pin)) return NextResponse.json({ error: 'PIN must be 4-8 digits' }, { status: 400 });
 
-  // Normalize phone
-  const normalized = phone.replace(/\D/g, '').replace(/^0/, '254');
+  // Normalize phone — handle all common formats:
+  //   0712345678  → 254712345678
+  //   712345678   → 254712345678  (typed after the +254 prefix shown in UI)
+  //   254712345678 → 254712345678
+  //   +254712345678 → 254712345678
+  const digits = phone.replace(/\D/g, '');
+  const normalized = digits.startsWith('254') ? digits
+    : digits.startsWith('0')   ? '254' + digits.slice(1)
+    : digits.length === 9      ? '254' + digits
+    : digits;
   if (!/^254\d{9}$/.test(normalized)) {
     return NextResponse.json({ error: 'Enter a valid Kenyan phone number' }, { status: 400 });
   }

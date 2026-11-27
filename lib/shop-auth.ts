@@ -84,11 +84,11 @@ export function getSessionFromCookieHeader(cookieHeader: string | null): ShopSes
 export function makeSessionCookie(session: ShopSession): string {
   const token  = createSessionToken(session);
   const maxAge = Math.floor(SESSION_DURATION_MS / 1000);
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/my-shop; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; Path=/my-shop; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
 export function newSession(shop_id: string, phone: string): ShopSession {
