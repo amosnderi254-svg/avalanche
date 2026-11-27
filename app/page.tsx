@@ -9,6 +9,7 @@ import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
 import RecentlySoldTicker from '@/components/RecentlySoldTicker';
+import { createServerClient } from '@/lib/supabase-server';
 
 
 export const dynamic = 'force-dynamic';
@@ -76,17 +77,38 @@ const HOW_IT_WORKS = [
 ];
 
 const QUICK_CATEGORIES = [
-  { id: 'strollers', label: 'Strollers',  icon: 'M3 12h1M5 6h14M5 6a2 2 0 00-2 2v4h18V8a2 2 0 00-2-2M19 12h2M7 12v5a2 2 0 002 2h6a2 2 0 002-2v-5M9 19a2 2 0 01-2 2 2 2 0 01-2-2M17 19a2 2 0 01-2 2 2 2 0 01-2-2' },
-  { id: 'bikes',     label: 'Bikes',      icon: 'M5 19a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4zm-9-9l2-5h5l2 4H10zm-1 0l-2 1-2 4' },
-  { id: 'shoes',     label: 'Shoes',      icon: 'M2 18h20M4 18V9a4 4 0 014-4h8a4 4 0 014 4v9M8 18v-4h8v4' },
-  { id: 'toys',      label: 'Toys',       icon: 'M12 2a5 5 0 015 5v1h1a2 2 0 010 4h-1v1a5 5 0 01-10 0v-1H6a2 2 0 010-4h1V7a5 5 0 015-5zM9 10h6' },
-  { id: 'books',     label: 'Books',      icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z' },
-  { id: 'car-seats', label: 'Car Seats',  icon: 'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3M9 17v4m0 0h6m-6 0H7m8 0h2m1-4h3a2 2 0 002-2v-4a2 2 0 00-2-2h-3' },
-  { id: 'clothing',  label: 'Clothing',   icon: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z' },
-  { id: 'baby-gear', label: 'Baby Gear',  icon: 'M12 2C9.24 2 7 4.24 7 7v1H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2h-2V7c0-2.76-2.24-5-5-5zm0 2a3 3 0 013 3v1H9V7a3 3 0 013-3zm-1 10h2v2h-2v-2zm0-4h2v2h-2v-2z' },
+  { id: 'strollers', label: 'Strollers',  iconBg: '#FFF0E6', iconColor: '#F07828', icon: 'M3 12h1M5 6h14M5 6a2 2 0 00-2 2v4h18V8a2 2 0 00-2-2M19 12h2M7 12v5a2 2 0 002 2h6a2 2 0 002-2v-5M9 19a2 2 0 01-2 2 2 2 0 01-2-2M17 19a2 2 0 01-2 2 2 2 0 01-2-2' },
+  { id: 'bikes',     label: 'Bikes',      iconBg: '#EDF7E2', iconColor: '#7DC243', icon: 'M5 19a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4zm-9-9l2-5h5l2 4H10zm-1 0l-2 1-2 4' },
+  { id: 'shoes',     label: 'Shoes',      iconBg: '#E8F4FD', iconColor: '#1E88E5', icon: 'M2 18h20M4 18V9a4 4 0 014-4h8a4 4 0 014 4v9M8 18v-4h8v4' },
+  { id: 'toys',      label: 'Toys',       iconBg: '#F3E8FD', iconColor: '#AB47BC', icon: 'M12 2a5 5 0 015 5v1h1a2 2 0 010 4h-1v1a5 5 0 01-10 0v-1H6a2 2 0 010-4h1V7a5 5 0 015-5zM9 10h6' },
+  { id: 'books',     label: 'Books',      iconBg: '#FFF8E1', iconColor: '#F9A825', icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z' },
+  { id: 'car-seats', label: 'Car Seats',  iconBg: '#E0F2F1', iconColor: '#00897B', icon: 'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3M9 17v4m0 0h6m-6 0H7m8 0h2m1-4h3a2 2 0 002-2v-4a2 2 0 00-2-2h-3' },
+  { id: 'clothing',  label: 'Clothing',   iconBg: '#FCE4EC', iconColor: '#E91E63', icon: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z' },
+  { id: 'baby-gear', label: 'Baby Gear',  iconBg: '#FFF3E0', iconColor: '#FF7043', icon: 'M12 2C9.24 2 7 4.24 7 7v1H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2h-2V7c0-2.76-2.24-5-5-5zm0 2a3 3 0 013 3v1H9V7a3 3 0 013-3zm-1 10h2v2h-2v-2zm0-4h2v2h-2v-2z' },
 ];
 
-export default function Home() {
+export default async function Home() {
+  /* ── Live category counts (server-side) ─────────────────────────────── */
+  let countMap: Record<string, number> = {};
+  let totalLive = 0;
+  try {
+    const supabase = createServerClient();
+    const now = new Date().toISOString();
+    const { data: rows } = await supabase
+      .from('listings')
+      .select('category')
+      .eq('status', 'live')
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .not('category', 'is', null);
+    countMap = (rows ?? []).reduce((acc: Record<string, number>, r: { category: string }) => {
+      acc[r.category] = (acc[r.category] ?? 0) + 1;
+      return acc;
+    }, {});
+    totalLive = Object.values(countMap).reduce((a, b) => a + b, 0);
+  } catch { /* non-critical — section degrades gracefully */ }
+  /* Category with the most live listings gets the "🔥 Trending" badge */
+  const trendingId = Object.entries(countMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
   return (
     <>
       <script
@@ -207,79 +229,198 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Quick-List Action Strip ───────────────────────────────── */}
-      <section style={{ padding: '64px 0', background: 'var(--bg, #FFFDF9)', borderTop: '1px solid var(--border)' }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <p style={{
-              font: '700 11px Outfit,sans-serif',
-              color: 'var(--orange, #F07828)',
-              textTransform: 'uppercase',
-              letterSpacing: '.1em',
-              margin: '0 0 10px',
-            }}>
-              Start selling
-            </p>
+      {/* ── Live Category Grid ───────────────────────────────────────────── */}
+      <section style={{ padding: '72px 0 80px', background: '#111', position: 'relative', overflow: 'hidden' }}>
+        {/* Decorative glow blobs */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: -120, right: -120,
+          width: 480, height: 480, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(240,120,40,.18) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div aria-hidden="true" style={{
+          position: 'absolute', bottom: -80, left: -80,
+          width: 320, height: 320, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(125,194,67,.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <style>{`
+          @keyframes catIn {
+            from { opacity: 0; transform: translateY(24px) scale(.96); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
+          }
+          @keyframes livePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: .6; transform: scale(1.4); }
+          }
+          .cat-card {
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center; gap: 10px;
+            padding: 28px 16px 22px;
+            background: rgba(255,255,255,.04);
+            border: 1.5px solid rgba(255,255,255,.08);
+            border-radius: 18px;
+            text-decoration: none; color: inherit;
+            position: relative;
+            transition: transform .22s cubic-bezier(.34,1.56,.64,1),
+                        border-color .18s ease,
+                        box-shadow .18s ease,
+                        background .18s ease;
+            animation: catIn .45s ease both;
+            animation-delay: calc(var(--i) * 60ms);
+          }
+          .cat-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            border-color: rgba(240,120,40,.55);
+            box-shadow: 0 20px 44px rgba(240,120,40,.18), 0 4px 12px rgba(0,0,0,.35);
+            background: rgba(255,255,255,.07);
+          }
+          .cat-cta {
+            font: 600 11px/1 Outfit,sans-serif;
+            color: #F07828;
+            letter-spacing: .04em;
+            opacity: 0; transform: translateY(6px);
+            transition: opacity .2s ease, transform .2s ease;
+            margin-top: 2px;
+          }
+          .cat-card:hover .cat-cta { opacity: 1; transform: translateY(0); }
+          .cat-trend {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(90deg, #F07828, #FF9A3C);
+            color: #fff;
+            font: 700 9px/1 Outfit,sans-serif;
+            letter-spacing: .08em; text-transform: uppercase;
+            padding: 4px 10px; border-radius: 20px;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(240,120,40,.5);
+          }
+          .cat-count {
+            font: 600 11px/1 Outfit,sans-serif;
+            color: rgba(255,255,255,.4);
+            transition: color .18s ease;
+          }
+          .cat-card:hover .cat-count { color: rgba(240,120,40,.8); }
+        `}</style>
+
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span aria-hidden="true" style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                background: '#7DC243',
+                animation: 'livePulse 2s ease-in-out infinite',
+              }} />
+              <span style={{
+                font: '600 11px/1 Outfit,sans-serif',
+                color: '#7DC243',
+                textTransform: 'uppercase',
+                letterSpacing: '.12em',
+              }}>
+                {totalLive > 0 ? `${totalLive.toLocaleString()} items live right now` : 'Live marketplace'}
+              </span>
+            </div>
             <h2 style={{
-              font: '800 clamp(22px,4vw,32px)/1.15 Outfit,sans-serif',
-              color: 'var(--text-1)',
-              margin: '0 0 10px',
-              letterSpacing: '-.02em',
+              font: '800 clamp(26px,4.5vw,40px)/1.1 Outfit,sans-serif',
+              color: '#fff',
+              margin: '0 0 12px',
+              letterSpacing: '-.03em',
             }}>
               What are you selling today?
             </h2>
             <p style={{
               font: '400 15px/1.5 Outfit,sans-serif',
-              color: 'var(--text-3)',
+              color: 'rgba(255,255,255,.45)',
               margin: 0,
             }}>
               Pick a category — your listing goes live in under 5 minutes.
             </p>
           </div>
 
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 10,
-            justifyContent: 'center',
-            marginBottom: 28,
-          }}>
-            {QUICK_CATEGORIES.map(cat => (
-              <Link
-                key={cat.id}
-                href={`/sell?category=${cat.id}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '12px 20px',
-                  background: '#fff',
-                  border: '1.5px solid var(--border)',
-                  borderRadius: 100,
-                  font: '600 14px Outfit,sans-serif',
-                  color: 'var(--text-1)',
-                  textDecoration: 'none',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="var(--orange, #F07828)" strokeWidth="1.75"
-                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+          {/* Category grid — 4 cols desktop / 2 cols mobile */}
+          <style>{`
+            .cat-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 14px;
+            }
+            @media (max-width: 700px) {
+              .cat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            }
+          `}</style>
+          <div className="cat-grid">
+            {QUICK_CATEGORIES.map((cat, i) => {
+              const count = countMap[cat.id] ?? 0;
+              const isTrending = cat.id === trendingId && count > 0;
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/sell?category=${cat.id}`}
+                  className="cat-card"
+                  style={{ '--i': i } as React.CSSProperties}
+                  aria-label={`Sell ${cat.label}${count > 0 ? ` — ${count} listed` : ''}`}
                 >
-                  <path d={cat.icon}/>
-                </svg>
-                {cat.label}
-              </Link>
-            ))}
+                  {isTrending && (
+                    <span className="cat-trend" aria-label="Trending category">
+                      🔥 Trending
+                    </span>
+                  )}
+
+                  {/* Icon circle */}
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 16,
+                    background: cat.iconBg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                      stroke={cat.iconColor} strokeWidth="1.75"
+                      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                    >
+                      <path d={cat.icon}/>
+                    </svg>
+                  </div>
+
+                  {/* Label */}
+                  <span style={{
+                    font: '700 13px/1.2 Outfit,sans-serif',
+                    color: '#fff',
+                    letterSpacing: '.01em',
+                  }}>
+                    {cat.label}
+                  </span>
+
+                  {/* Live count */}
+                  <span className="cat-count">
+                    {count > 0 ? `${count} listed` : 'Be first'}
+                  </span>
+
+                  {/* Hover CTA */}
+                  <span className="cat-cta">List yours →</span>
+                </Link>
+              );
+            })}
           </div>
 
-          <p style={{ textAlign: 'center', font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
+          {/* Footer note */}
+          <p style={{
+            textAlign: 'center',
+            font: '400 13px Outfit,sans-serif',
+            color: 'rgba(255,255,255,.3)',
+            margin: '36px 0 0',
+          }}>
             Listing is KSh 99.{' '}
-            <Link href="/sell" style={{ color: 'var(--orange, #F07828)', textDecoration: 'none', fontWeight: 600 }}>
+            <Link href="/sell" style={{
+              color: '#F07828',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}>
               Not sure what to list? Start from scratch →
             </Link>
           </p>
         </div>
+
       </section>
 
       {/* ── Dark CTA banner ──────────────────────────────── */}
