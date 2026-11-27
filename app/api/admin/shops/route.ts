@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   // Check if seller profile exists
   const { data: existing } = await supabase
     .from('seller_profiles')
-    .select('id, phone, display_name')
+    .select('id, phone, display_name, profile_slug')
     .eq('phone', normalizedPhone)
     .single();
 
@@ -155,6 +155,15 @@ export async function POST(req: NextRequest) {
       subscription_expires_at,
       verified_shop: false,
     };
+    // Generate a profile_slug if the existing profile doesn't have one
+    if (!existing.profile_slug) {
+      const slugBase = shop_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60);
+      promotePayload.profile_slug = `${slugBase}-${Math.random().toString(16).slice(2, 6)}`;
+    }
     if (hashedPin) promotePayload.shop_pin = hashedPin;
 
     const { data, error } = await supabase

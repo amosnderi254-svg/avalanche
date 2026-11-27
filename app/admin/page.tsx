@@ -308,7 +308,7 @@ export default function AdminPage() {
   const [onboardStep, setOnboardStep]   = useState(1);
   const [onboardLoading, setOnboardLoading] = useState(false);
   const [onboardMsg, setOnboardMsg]     = useState('');
-  const [onboardCredentials, setOnboardCredentials] = useState<{ shop_name: string; phone: string; pin: string; action: string } | null>(null);
+  const [onboardCredentials, setOnboardCredentials] = useState<{ shop_name: string; phone: string; pin: string; action: string; profile_slug: string | null } | null>(null);
   const [pinResetResult, setPinResetResult]         = useState<{ id: string; shop_name: string; phone: string; pin: string } | null>(null);
   const [newPinForShop, setNewPinForShop]           = useState('');
   const [editShop, setEditShop]         = useState<ShopRow | null>(null);
@@ -1443,7 +1443,7 @@ export default function AdminPage() {
         const data = await res.json();
         if (res.ok) {
           const normalizedPhone = onboardForm.phone.replace(/\D/g, '').replace(/^0/, '254');
-          setOnboardCredentials({ shop_name: onboardForm.shop_name, phone: normalizedPhone, pin: rawPin, action: data.action });
+          setOnboardCredentials({ shop_name: onboardForm.shop_name, phone: normalizedPhone, pin: rawPin, action: data.action, profile_slug: data.shop?.profile_slug || null });
           setOnboardMsg('');
           setOnboardForm(BLANK_ONBOARD); setOnboardStep(1);
           fetchShops();
@@ -1721,10 +1721,19 @@ export default function AdminPage() {
         {/* ── Credential card shown after successful onboarding ── */}
         {onboardCredentials && (() => {
           const loginUrl = 'https://mytinyverse.co.ke/my-shop';
-          const waMsg = `Hi! Welcome to MyTinyverse 🎉\n\nYour shop *${onboardCredentials.shop_name}* is live!\n\nLogin here: ${loginUrl}\n📱 Phone: +${onboardCredentials.phone}\n🔑 PIN: ${onboardCredentials.pin}\n\nKeep your PIN private. You can change it from your dashboard. Happy selling!`;
+          const shopUrl  = onboardCredentials.profile_slug
+            ? `https://mytinyverse.co.ke/sellers/${onboardCredentials.profile_slug}`
+            : null;
+          const waMsg = `Hi! Welcome to MyTinyverse 🎉\n\nYour shop *${onboardCredentials.shop_name}* is live!\n\n${shopUrl ? `🏪 Your shop page: ${shopUrl}\n\n` : ''}Login to your dashboard:\n🔗 ${loginUrl}\n📱 Phone: +${onboardCredentials.phone}\n🔑 PIN: ${onboardCredentials.pin}\n\nKeep your PIN private. You can change it from your dashboard. Happy selling!`;
           const copyText = (txt: string, btn: HTMLButtonElement) => {
             navigator.clipboard.writeText(txt).then(() => { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = orig; }, 1500); }).catch(() => {});
           };
+          const credRows = [
+            ...(shopUrl ? [{ label: 'Public shop URL', value: shopUrl, mono: false }] : []),
+            { label: 'Login URL', value: loginUrl, mono: false },
+            { label: 'Phone number', value: `+${onboardCredentials.phone}`, mono: true },
+            { label: 'PIN', value: onboardCredentials.pin, mono: true },
+          ];
           return (
             <div style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 14, padding: '18px 20px', marginBottom: 20, position: 'relative' }}>
               <button onClick={() => setOnboardCredentials(null)} title="Dismiss" style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontSize: 18, lineHeight: 1 }}>✕</button>
@@ -1737,11 +1746,7 @@ export default function AdminPage() {
                 Share this with <strong>{onboardCredentials.shop_name}</strong> so they can log in and start listing items.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
-                {[
-                  { label: 'Login URL', value: loginUrl, mono: false },
-                  { label: 'Phone number', value: `+${onboardCredentials.phone}`, mono: true },
-                  { label: 'PIN', value: onboardCredentials.pin, mono: true },
-                ].map(({ label, value, mono }) => (
+                {credRows.map(({ label, value, mono }) => (
                   <div key={label} style={{ background: '#fff', border: '1px solid #BBF7D0', borderRadius: 8, padding: '10px 12px' }}>
                     <div style={{ font: '500 11px Outfit,sans-serif', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1761,7 +1766,13 @@ export default function AdminPage() {
                   Send via WhatsApp
                 </a>
                 <button onClick={e => {
-                  const full = `Shop: ${onboardCredentials.shop_name}\nLogin URL: ${loginUrl}\nPhone: +${onboardCredentials.phone}\nPIN: ${onboardCredentials.pin}`;
+                  const full = [
+                    `Shop: ${onboardCredentials.shop_name}`,
+                    shopUrl ? `Shop URL: ${shopUrl}` : '',
+                    `Login URL: ${loginUrl}`,
+                    `Phone: +${onboardCredentials.phone}`,
+                    `PIN: ${onboardCredentials.pin}`,
+                  ].filter(Boolean).join('\n');
                   copyText(full, e.currentTarget);
                 }} style={{ padding: '8px 16px', background: '#fff', border: '1.5px solid #BBF7D0', borderRadius: 8, font: '600 13px Outfit,sans-serif', color: '#15803D', cursor: 'pointer' }}>
                   Copy all credentials
