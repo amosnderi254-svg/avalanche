@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import type { Listing, Article, ArticleStatus } from '@/types';
 
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '0784';
+// PIN is verified server-side on every API call; the value here gates the local PIN-entry UI only.
+const ADMIN_PIN = '0784';
 const WA_ADMIN = '254790784084';
 
 // ── Form constants ────────────────────────────────────────────────────────────
