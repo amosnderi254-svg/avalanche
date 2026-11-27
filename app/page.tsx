@@ -230,18 +230,23 @@ export default async function Home() {
       </section>
 
       {/* ── Live Category Grid ───────────────────────────────────────────── */}
-      <section style={{ padding: '72px 0 80px', background: '#111', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative glow blobs */}
+      <section style={{
+        padding: '72px 0 80px',
+        background: 'linear-gradient(145deg, #FFF9F4 0%, #FFF0E0 40%, #FFE4C4 80%, #FFD9A8 100%)',
+        position: 'relative', overflow: 'hidden',
+        borderTop: '1px solid rgba(240,120,40,.12)',
+      }}>
+        {/* Decorative soft blobs — warm tones only */}
         <div aria-hidden="true" style={{
-          position: 'absolute', top: -120, right: -120,
-          width: 480, height: 480, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(240,120,40,.18) 0%, transparent 70%)',
+          position: 'absolute', top: -160, right: -100,
+          width: 500, height: 500, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(240,120,40,.10) 0%, transparent 65%)',
           pointerEvents: 'none',
         }} />
         <div aria-hidden="true" style={{
-          position: 'absolute', bottom: -80, left: -80,
-          width: 320, height: 320, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(125,194,67,.12) 0%, transparent 70%)',
+          position: 'absolute', bottom: -100, left: -60,
+          width: 360, height: 360, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,180,80,.14) 0%, transparent 65%)',
           pointerEvents: 'none',
         }} />
 
@@ -252,17 +257,20 @@ export default async function Home() {
           }
           @keyframes livePulse {
             0%, 100% { opacity: 1; transform: scale(1); }
-            50%       { opacity: .6; transform: scale(1.4); }
+            50%       { opacity: .5; transform: scale(1.5); }
           }
           .cat-card {
             display: flex; flex-direction: column; align-items: center;
             text-align: center; gap: 10px;
             padding: 28px 16px 22px;
-            background: rgba(255,255,255,.04);
-            border: 1.5px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,.9);
             border-radius: 18px;
             text-decoration: none; color: inherit;
             position: relative;
+            box-shadow: 0 2px 12px rgba(200,100,20,.07), 0 1px 3px rgba(200,100,20,.05);
             transition: transform .22s cubic-bezier(.34,1.56,.64,1),
                         border-color .18s ease,
                         box-shadow .18s ease,
@@ -272,9 +280,9 @@ export default async function Home() {
           }
           .cat-card:hover {
             transform: translateY(-8px) scale(1.03);
-            border-color: rgba(240,120,40,.55);
-            box-shadow: 0 20px 44px rgba(240,120,40,.18), 0 4px 12px rgba(0,0,0,.35);
-            background: rgba(255,255,255,.07);
+            border-color: rgba(240,120,40,.5);
+            box-shadow: 0 20px 48px rgba(200,90,10,.16), 0 4px 16px rgba(200,90,10,.10);
+            background: rgba(255,255,255,.92);
           }
           .cat-cta {
             font: 600 11px/1 Outfit,sans-serif;
@@ -286,21 +294,21 @@ export default async function Home() {
           }
           .cat-card:hover .cat-cta { opacity: 1; transform: translateY(0); }
           .cat-trend {
-            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
             background: linear-gradient(90deg, #F07828, #FF9A3C);
             color: #fff;
             font: 700 9px/1 Outfit,sans-serif;
             letter-spacing: .08em; text-transform: uppercase;
             padding: 4px 10px; border-radius: 20px;
             white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(240,120,40,.5);
+            box-shadow: 0 4px 14px rgba(240,120,40,.45);
           }
           .cat-count {
             font: 600 11px/1 Outfit,sans-serif;
-            color: rgba(255,255,255,.4);
+            color: #C08050;
             transition: color .18s ease;
           }
-          .cat-card:hover .cat-count { color: rgba(240,120,40,.8); }
+          .cat-card:hover .cat-count { color: #F07828; }
         `}</style>
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
@@ -314,7 +322,7 @@ export default async function Home() {
               }} />
               <span style={{
                 font: '600 11px/1 Outfit,sans-serif',
-                color: '#7DC243',
+                color: '#5A8A2A',
                 textTransform: 'uppercase',
                 letterSpacing: '.12em',
               }}>
@@ -323,7 +331,7 @@ export default async function Home() {
             </div>
             <h2 style={{
               font: '800 clamp(26px,4.5vw,40px)/1.1 Outfit,sans-serif',
-              color: '#fff',
+              color: '#1A1A1A',
               margin: '0 0 12px',
               letterSpacing: '-.03em',
             }}>
@@ -331,7 +339,7 @@ export default async function Home() {
             </h2>
             <p style={{
               font: '400 15px/1.5 Outfit,sans-serif',
-              color: 'rgba(255,255,255,.45)',
+              color: '#7A5A40',
               margin: 0,
             }}>
               Pick a category — your listing goes live in under 5 minutes.
@@ -385,7 +393,7 @@ export default async function Home() {
                   {/* Label */}
                   <span style={{
                     font: '700 13px/1.2 Outfit,sans-serif',
-                    color: '#fff',
+                    color: '#1A1A1A',
                     letterSpacing: '.01em',
                   }}>
                     {cat.label}
@@ -407,7 +415,7 @@ export default async function Home() {
           <p style={{
             textAlign: 'center',
             font: '400 13px Outfit,sans-serif',
-            color: 'rgba(255,255,255,.3)',
+            color: '#A07850',
             margin: '36px 0 0',
           }}>
             Listing is KSh 99.{' '}
