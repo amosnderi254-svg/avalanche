@@ -301,22 +301,56 @@ export default function SellPage() {
   const [stkErr, setStkErr]       = useState('');
   const [submitErr, setSubmitErr] = useState('');
   const [returningSellerLoaded, setReturningSellerLoaded] = useState(false);
+  const [shopLocked, setShopLocked] = useState(false); // true if seller details come from shop profile
 
-  /* ── Load cached seller info (returning sellers auto-fill) ── */
+  /* ── Load seller info: shop profile first, then localStorage fallback ── */
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem('mtv_seller');
-      if (cached) {
-        const { name, phone, area: savedArea, email } = JSON.parse(cached);
-        if (name)      setSellerName(name);
-        if (phone)     { setSellerPhone(phone); setPayPhone(phone); }
-        if (savedArea) setArea(savedArea);
-        if (email)     setSellerEmail(email);
-        setReturningSellerLoaded(true);
-      }
-    } catch {
-      // localStorage blocked or corrupt -- silent fail
-    }
+    // Try fetching from authenticated shop profile first
+    fetch('/api/my-shop/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.shop) {
+          const s = data.shop;
+          const rawPhone = s.phone ?? '';
+          // Normalize: ensure it starts with 0 for display (we store as 254XXXXXXXXX)
+          const displayPhone = rawPhone.startsWith('254')
+            ? '0' + rawPhone.slice(3)
+            : rawPhone;
+          setSellerName(s.display_name || s.shop_name || '');
+          setSellerPhone(displayPhone);
+          setPayPhone(displayPhone);
+          if (s.neighbourhood) setArea(s.neighbourhood);
+          setShopLocked(true);        // lock fields — phone must match shop
+          setReturningSellerLoaded(true);
+        } else {
+          // Not a shop owner — fall back to localStorage cache
+          try {
+            const cached = localStorage.getItem('mtv_seller');
+            if (cached) {
+              const { name, phone, area: savedArea, email } = JSON.parse(cached);
+              if (name)      setSellerName(name);
+              if (phone)     { setSellerPhone(phone); setPayPhone(phone); }
+              if (savedArea) setArea(savedArea);
+              if (email)     setSellerEmail(email);
+              setReturningSellerLoaded(true);
+            }
+          } catch { /* localStorage blocked */ }
+        }
+      })
+      .catch(() => {
+        // Network error — fall back to localStorage cache
+        try {
+          const cached = localStorage.getItem('mtv_seller');
+          if (cached) {
+            const { name, phone, area: savedArea, email } = JSON.parse(cached);
+            if (name)      setSellerName(name);
+            if (phone)     { setSellerPhone(phone); setPayPhone(phone); }
+            if (savedArea) setArea(savedArea);
+            if (email)     setSellerEmail(email);
+            setReturningSellerLoaded(true);
+          }
+        } catch { /* silent */ }
+      });
   }, []);
 
   /* ── Restore in-progress draft (handles browser back button on mobile) ──
@@ -892,24 +926,34 @@ export default function SellPage() {
 
             {/* Returning seller banner */}
             {returningSellerLoaded && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#edf7e2', border: '1px solid #c5e8a0', borderRadius: 'var(--r-md)' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: shopLocked ? '#FFF5EC' : '#edf7e2', border: `1px solid ${shopLocked ? '#F07828' : '#c5e8a0'}`, borderRadius: 'var(--r-md)' }}>
+                {shopLocked ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
                 <span style={{ font: '400 13px Outfit,sans-serif', color: 'var(--text-2)' }}>
-                  Welcome back! Your details have been filled in.
+                  {shopLocked
+                    ? 'Using your shop contact details. Buyers will WhatsApp you directly.'
+                    : 'Welcome back! Your details have been filled in.'}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSellerName(''); setSellerPhone(''); setArea('');
-                    setSellerEmail(''); setPayPhone('');
-                    setReturningSellerLoaded(false);
-                  }}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', font: '400 12px Outfit,sans-serif', padding: '2px 6px', borderRadius: 'var(--r-sm)' }}
-                >
-                  Clear
-                </button>
+                {!shopLocked && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSellerName(''); setSellerPhone(''); setArea('');
+                      setSellerEmail(''); setPayPhone('');
+                      setReturningSellerLoaded(false);
+                    }}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', font: '400 12px Outfit,sans-serif', padding: '2px 6px', borderRadius: 'var(--r-sm)' }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             )}
 
@@ -921,10 +965,11 @@ export default function SellPage() {
               <input
                 type="text"
                 value={sellerName}
-                onChange={e => setSellerName(e.target.value)}
+                onChange={e => !shopLocked && setSellerName(e.target.value)}
+                readOnly={shopLocked}
                 placeholder="e.g. Grace Wambua"
                 maxLength={60}
-                style={{ width: '100%', boxSizing: 'border-box', height: 48, border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0 14px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', height: 48, border: `1.5px solid ${shopLocked ? 'rgba(240,120,40,.3)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', padding: '0 14px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: shopLocked ? '#FDFAF7' : '#fff', outline: 'none', cursor: shopLocked ? 'default' : 'text' }}
               />
             </div>
 
@@ -936,12 +981,15 @@ export default function SellPage() {
               <input
                 type="tel"
                 value={sellerPhone}
-                onChange={e => setSellerPhone(e.target.value)}
+                onChange={e => !shopLocked && setSellerPhone(e.target.value)}
+                readOnly={shopLocked}
                 placeholder="e.g. 0712 345 678"
-                style={{ width: '100%', boxSizing: 'border-box', height: 48, border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0 14px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: '#fff', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', height: 48, border: `1.5px solid ${shopLocked ? 'rgba(240,120,40,.3)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', padding: '0 14px', font: '400 15px Outfit,sans-serif', color: 'var(--text-1)', background: shopLocked ? '#FDFAF7' : '#fff', outline: 'none', cursor: shopLocked ? 'default' : 'text' }}
               />
               <p style={{ font: '400 11px Outfit,sans-serif', color: 'var(--text-3)', margin: '5px 0 0' }}>
-                Buyers contact you here. Keep notifications on.
+                {shopLocked
+                  ? '🔒 This is your registered shop number. Buyers will WhatsApp you directly.'
+                  : 'Buyers contact you here. Keep notifications on.'}
               </p>
             </div>
 

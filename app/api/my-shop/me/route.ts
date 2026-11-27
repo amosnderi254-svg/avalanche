@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase-server';
 import { getSessionFromCookieHeader } from '@/lib/shop-auth';
 
 // GET /api/my-shop/me
-// Returns the authenticated shop's profile + live listing stats
+// Returns the authenticated shop's profile + rich stats for dashboard
 export async function GET(req: NextRequest) {
   const session = getSessionFromCookieHeader(req.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -25,25 +25,86 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const shop = shopRaw as any;
 
-  // Live listing count
   const now = new Date().toISOString();
-  const { count: liveCount } = await supabase
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('seller_phone', shop.phone)
-    .eq('status', 'live')
-    .or(`expires_at.is.null,expires_at.gt.${now}`);
 
-  const { count: totalCount } = await supabase
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('seller_phone', shop.phone);
+  // Run all stat queries in parallel
+  const [
+    liveResult,
+    totalResult,
+    soldListings,
+    allListings,
+  ] = await Promise.all([
+    // Live listing count
+    supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_phone', shop.phone)
+      .eq('status', 'live')
+      .or(`expires_at.is.null,expires_at.gt.${now}`),
+
+    // Total listing count
+    supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_phone', shop.phone),
+
+    // Sold listings — sum price for earnings
+    supabase
+      .from('listings')
+      .select('price')
+      .eq('seller_phone', shop.phone)
+      .eq('status', 'sold'),
+
+    // All listings — sum view_count + find best performer
+    supabase
+      .from('listings')
+      .select('id, title, price, images, view_count, status, category, created_at')
+      .eq('seller_phone', shop.phone)
+      .order('view_count', { ascending: false })
+      .limit(20),
+  ]);
+
+  // Earnings: sum of prices of sold listings
+  const soldRows = (soldListings.data ?? []) as { price: number }[];
+  const totalEarned = soldRows.reduce((sum, r) => sum + (r.price ?? 0), 0);
+
+  // Total views across all listings
+  const allRows = (allListings.data ?? []) as { id: string; title: string; price: number; images: string[]; view_count: number; status: string; category: string; created_at: string }[];
+  const totalViews = allRows.reduce((sum, r) => sum + (r.view_count ?? 0), 0);
+
+  // Best performer: highest view_count listing
+  const bestListing = allRows[0] ?? null;
+
+  // Recent activity: last 6 listings by created_at
+  const recentListings = [...allRows]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
+
+  // Conversion rate: sold / (sold + live + archived) if > 0
+  const soldCount  = liveResult.count !== null ? (totalResult.count ?? 0) - (liveResult.count ?? 0) : (shop.total_sold ?? 0);
+  const convRate   = (totalResult.count ?? 0) > 0
+    ? Math.round(((shop.total_sold ?? 0) / (totalResult.count ?? 1)) * 100)
+    : 0;
+
+  // Average price of live listings
+  const liveRows = allRows.filter(r => r.status === 'live');
+  const avgPrice = liveRows.length > 0
+    ? Math.round(liveRows.reduce((sum, r) => sum + (r.price ?? 0), 0) / liveRows.length)
+    : 0;
+
+  void soldCount;
 
   return NextResponse.json({
     shop: {
       ...shop,
-      live_listings: liveCount ?? 0,
-      total_listings: totalCount ?? 0,
+      live_listings:    liveResult.count  ?? 0,
+      total_listings:   totalResult.count ?? 0,
+      total_earned:     totalEarned,
+      total_views:      totalViews,
+      conversion_rate:  convRate,
+      avg_price:        avgPrice,
+      best_listing:     bestListing,
+      recent_listings:  recentListings,
     },
   });
 }
