@@ -10,6 +10,7 @@ import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
 import RecentlySoldTicker from '@/components/RecentlySoldTicker';
 import SellerEarningsSpotlight from '@/components/SellerEarningsSpotlight';
+import LiveDemandFeed from '@/components/LiveDemandFeed';
 import { createServerClient } from '@/lib/supabase-server';
 
 
@@ -134,6 +135,9 @@ export default async function Home() {
 
       {/* ── Seller Earnings Spotlight ─────────────────────── */}
       <SellerEarningsSpotlight />
+
+      {/* ── Live Demand Feed ──────────────────────────────── */}
+      <LiveDemandFeed />
 
       {/* ── Listings ─────────────────────────────────────── */}
       <div id="listings" style={{ background: 'var(--bg, #FFFDF9)' }}>
