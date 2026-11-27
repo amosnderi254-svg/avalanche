@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const supabase = createAdminClient();
-  const { data: shop, error } = await supabase
+  const { data: shopRaw, error } = await supabase
     .from('seller_profiles')
     .select(
       'id, phone, display_name, profile_slug, neighbourhood, avatar_url, ' +
@@ -21,7 +21,9 @@ export async function GET(req: NextRequest) {
     .eq('is_shop', true)
     .single();
 
-  if (error || !shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
+  if (error || !shopRaw) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shop = shopRaw as any;
 
   // Live listing count
   const now = new Date().toISOString();

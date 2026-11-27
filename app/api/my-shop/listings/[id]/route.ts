@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // If marked sold, bump total_sold on seller_profiles
   if (patch.status === 'sold') {
-    await supabase.rpc('increment_total_sold', { seller_phone_input: shop.phone }).catch(() => {});
+    await supabase.rpc('increment_total_sold', { seller_phone_input: shop.phone }).then(undefined, () => {});
   }
 
   return NextResponse.json({ listing: data });
