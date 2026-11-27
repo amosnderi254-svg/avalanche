@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: shops, error } = await supabase
     .from('seller_profiles')
-    .select('id, phone, display_name, profile_slug, neighbourhood, avatar_url, shop_name, shop_bio, shop_banner_url, shop_areas, is_shop, verified_shop, subscription_tier, subscription_expires_at, created_at')
+    .select('id, phone, display_name, profile_slug, neighbourhood, avatar_url, shop_name, shop_bio, shop_banner_url, shop_areas, is_shop, verified_shop, subscription_tier, subscription_expires_at, created_at, shop_pin')
     .eq('is_shop', true)
     .order('created_at', { ascending: false });
 

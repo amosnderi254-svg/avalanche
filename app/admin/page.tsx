@@ -291,7 +291,7 @@ export default function AdminPage() {
   const [marketTab, setMarketTab] = useState<'categories'|'searches'|'revenue'|'expiring'>('categories');
 
   // Shops
-  interface ShopRow { id: string; phone: string; display_name: string; profile_slug: string; neighbourhood: string | null; avatar_url: string | null; shop_name: string | null; shop_bio: string | null; shop_areas: string[]; is_shop: boolean; verified_shop: boolean; subscription_tier: string; subscription_expires_at: string | null; listing_count: number; created_at: string; }
+  interface ShopRow { id: string; phone: string; display_name: string; profile_slug: string; neighbourhood: string | null; avatar_url: string | null; shop_name: string | null; shop_bio: string | null; shop_areas: string[]; is_shop: boolean; verified_shop: boolean; subscription_tier: string; subscription_expires_at: string | null; listing_count: number; created_at: string; shop_pin: string | null; }
   const [shops, setShops]               = useState<ShopRow[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [shopSearch, setShopSearch]     = useState('');
@@ -302,12 +302,15 @@ export default function AdminPage() {
     shop_name: '', kiosk_address: '', neighbourhood: '', operating_hours: '', categories: [] as string[], shop_bio: '',
     // Step 3: Subscription
     subscription_tier: 'free', billing_cycle: 'monthly' as 'monthly'|'annual',
-    subscription_start: new Date().toISOString().split('T')[0], mpesa_ref: '', admin_notes: '',
+    subscription_start: new Date().toISOString().split('T')[0], mpesa_ref: '', admin_notes: '', shop_pin: '',
   };
   const [onboardForm, setOnboardForm]   = useState(BLANK_ONBOARD);
   const [onboardStep, setOnboardStep]   = useState(1);
   const [onboardLoading, setOnboardLoading] = useState(false);
   const [onboardMsg, setOnboardMsg]     = useState('');
+  const [onboardCredentials, setOnboardCredentials] = useState<{ shop_name: string; phone: string; pin: string; action: string } | null>(null);
+  const [pinResetResult, setPinResetResult]         = useState<{ id: string; shop_name: string; phone: string; pin: string } | null>(null);
+  const [newPinForShop, setNewPinForShop]           = useState('');
   const [editShop, setEditShop]         = useState<ShopRow | null>(null);
   const [patchLoading, setPatchLoading] = useState(false);
 
@@ -354,6 +357,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (authed && view === 'queue') fetchListings(modTab);
+  }, [authed, view, modTab, fetchListings]);
+
+  // Auto-refresh queue every 45 s so new shop submissions appear without manual reload
+  useEffect(() => {
+    if (!authed || view !== 'queue') return;
+    const interval = setInterval(() => fetchListings(modTab), 45_000);
+    return () => clearInterval(interval);
   }, [authed, view, modTab, fetchListings]);
 
   useEffect(() => {
@@ -1422,14 +1432,19 @@ export default function AdminPage() {
       if (!onboardForm.phone || !onboardForm.shop_name) return;
       setOnboardLoading(true); setOnboardMsg('');
       try {
+        // Auto-generate a 6-digit PIN if none provided by admin
+        const rawPin = onboardForm.shop_pin.trim() || String(Math.floor(100000 + Math.random() * 900000));
+        const payload = { ...onboardForm, shop_pin: rawPin };
         const res = await fetch('/api/admin/shops', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
-          body: JSON.stringify(onboardForm),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok) {
-          setOnboardMsg(`Shop ${data.action === 'promoted' ? 'promoted' : 'created'} successfully.`);
+          const normalizedPhone = onboardForm.phone.replace(/\D/g, '').replace(/^0/, '254');
+          setOnboardCredentials({ shop_name: onboardForm.shop_name, phone: normalizedPhone, pin: rawPin, action: data.action });
+          setOnboardMsg('');
           setOnboardForm(BLANK_ONBOARD); setOnboardStep(1);
           fetchShops();
         } else {
@@ -1438,7 +1453,7 @@ export default function AdminPage() {
       } catch { setOnboardMsg('Network error.'); } finally { setOnboardLoading(false); }
     }
 
-    async function handlePatch(id: string, patch: Record<string, unknown>) {
+    async function handlePatch(id: string, patch: Record<string, unknown>, rawPin?: string) {
       setPatchLoading(true);
       try {
         const res = await fetch('/api/admin/shops', {
@@ -1446,7 +1461,15 @@ export default function AdminPage() {
           headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
           body: JSON.stringify({ id, ...patch }),
         });
-        if (res.ok) { setEditShop(null); fetchShops(); }
+        if (res.ok) {
+          if (rawPin) {
+            const shop = shops.find(s => s.id === id);
+            const phone = shop?.phone || '';
+            const sName = shop?.shop_name || shop?.display_name || 'Shop';
+            setPinResetResult({ id, shop_name: sName, phone, pin: rawPin });
+          }
+          setEditShop(null); setNewPinForShop(''); fetchShops();
+        }
       } finally { setPatchLoading(false); }
     }
 
@@ -1631,6 +1654,24 @@ export default function AdminPage() {
                         <label style={lblStyle}>Admin notes <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>(internal only)</span></label>
                         <textarea placeholder="e.g. Met at Westgate fair, sells premium imported clothing. Referred by shop #3." value={onboardForm.admin_notes} onChange={e => setOnboardForm(f => ({ ...f, admin_notes: e.target.value }))} rows={2} style={{ ...fldStyle, height: 'auto', padding: '8px 12px', resize: 'vertical' }}/>
                       </div>
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <label style={lblStyle}>
+                          Shop dashboard PIN
+                          <span style={{ font: '400 11px Outfit,sans-serif', color: '#7DC243', marginLeft: 8 }}>★ Leave blank to auto-generate</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Auto-generate (blank) or enter 4-8 digits"
+                          value={onboardForm.shop_pin}
+                          onChange={e => setOnboardForm(f => ({ ...f, shop_pin: e.target.value.replace(/\D/g,'').slice(0,8) }))}
+                          style={{ ...fldStyle, font: '700 16px monospace', letterSpacing: '.15em', color: '#1A1310' }}
+                          maxLength={8}
+                        />
+                        <div style={{ font: '400 11px Outfit,sans-serif', color: '#B09070', marginTop: 4 }}>
+                          The shop owner uses this PIN + phone number to log in at mytinyverse.co.ke/my-shop. You&apos;ll see the credential card after onboarding.
+                        </div>
+                      </div>
                     </div>
 
                     {/* Summary review panel */}
@@ -1673,6 +1714,94 @@ export default function AdminPage() {
                   </>
                 )}
               </form>
+            </div>
+          );
+        })()}
+
+        {/* ── Credential card shown after successful onboarding ── */}
+        {onboardCredentials && (() => {
+          const loginUrl = 'https://mytinyverse.co.ke/my-shop';
+          const waMsg = `Hi! Welcome to MyTinyverse 🎉\n\nYour shop *${onboardCredentials.shop_name}* is live!\n\nLogin here: ${loginUrl}\n📱 Phone: +${onboardCredentials.phone}\n🔑 PIN: ${onboardCredentials.pin}\n\nKeep your PIN private. You can change it from your dashboard. Happy selling!`;
+          const copyText = (txt: string, btn: HTMLButtonElement) => {
+            navigator.clipboard.writeText(txt).then(() => { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = orig; }, 1500); }).catch(() => {});
+          };
+          return (
+            <div style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 14, padding: '18px 20px', marginBottom: 20, position: 'relative' }}>
+              <button onClick={() => setOnboardCredentials(null)} title="Dismiss" style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontSize: 18, lineHeight: 1 }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ font: '700 16px Outfit,sans-serif', color: '#15803D' }}>
+                  ✅ {onboardCredentials.action === 'promoted' ? 'Shop promoted' : 'Shop created'} — share these credentials
+                </span>
+              </div>
+              <p style={{ font: '400 13px Outfit,sans-serif', color: '#166534', margin: '0 0 14px' }}>
+                Share this with <strong>{onboardCredentials.shop_name}</strong> so they can log in and start listing items.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
+                {[
+                  { label: 'Login URL', value: loginUrl, mono: false },
+                  { label: 'Phone number', value: `+${onboardCredentials.phone}`, mono: true },
+                  { label: 'PIN', value: onboardCredentials.pin, mono: true },
+                ].map(({ label, value, mono }) => (
+                  <div key={label} style={{ background: '#fff', border: '1px solid #BBF7D0', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ font: '500 11px Outfit,sans-serif', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ font: `${mono ? '700 15px monospace' : '500 13px Outfit,sans-serif'}`, color: '#1A1310', letterSpacing: mono ? '.1em' : 0, flex: 1, minWidth: 0, wordBreak: 'break-all' }}>{value}</span>
+                      <button onClick={e => copyText(value, e.currentTarget)} style={{ flexShrink: 0, padding: '3px 8px', background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 5, font: '600 11px Outfit,sans-serif', color: '#065F46', cursor: 'pointer' }}>Copy</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <a
+                  href={`https://wa.me/${onboardCredentials.phone}?text=${encodeURIComponent(waMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#25D366', color: '#fff', borderRadius: 8, font: '600 13px Outfit,sans-serif', textDecoration: 'none' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d={WA_PATH}/></svg>
+                  Send via WhatsApp
+                </a>
+                <button onClick={e => {
+                  const full = `Shop: ${onboardCredentials.shop_name}\nLogin URL: ${loginUrl}\nPhone: +${onboardCredentials.phone}\nPIN: ${onboardCredentials.pin}`;
+                  copyText(full, e.currentTarget);
+                }} style={{ padding: '8px 16px', background: '#fff', border: '1.5px solid #BBF7D0', borderRadius: 8, font: '600 13px Outfit,sans-serif', color: '#15803D', cursor: 'pointer' }}>
+                  Copy all credentials
+                </button>
+                <button onClick={() => setOnboardCredentials(null)} style={{ padding: '8px 16px', background: 'transparent', border: 'none', font: '400 13px Outfit,sans-serif', color: '#6B7280', cursor: 'pointer' }}>
+                  Done
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── PIN reset credential card ── */}
+        {pinResetResult && (() => {
+          const loginUrl = 'https://mytinyverse.co.ke/my-shop';
+          const waMsg = `Hi! Your MyTinyverse shop dashboard PIN has been reset.\n\n📱 Phone: +${pinResetResult.phone}\n🔑 New PIN: ${pinResetResult.pin}\n\nLogin at: ${loginUrl}\n\nKeep your PIN private!`;
+          const copyText = (txt: string, btn: HTMLButtonElement) => {
+            navigator.clipboard.writeText(txt).then(() => { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = orig; }, 1500); }).catch(() => {});
+          };
+          return (
+            <div style={{ background: '#FFF7ED', border: '2px solid #FED7AA', borderRadius: 14, padding: '16px 20px', marginBottom: 20, position: 'relative' }}>
+              <button onClick={() => setPinResetResult(null)} title="Dismiss" style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 18, lineHeight: 1 }}>✕</button>
+              <div style={{ font: '700 15px Outfit,sans-serif', color: '#C2410C', marginBottom: 8 }}>🔑 PIN reset for {pinResetResult.shop_name}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+                {[{ label: 'Phone', value: `+${pinResetResult.phone}` }, { label: 'New PIN', value: pinResetResult.pin }].map(({ label, value }) => (
+                  <div key={label} style={{ background: '#fff', border: '1px solid #FED7AA', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ font: '500 11px Outfit,sans-serif', color: '#9CA3AF', marginRight: 4 }}>{label}:</span>
+                    <span style={{ font: '700 14px monospace', color: '#1A1310', letterSpacing: '.1em' }}>{value}</span>
+                    <button onClick={e => copyText(value, e.currentTarget)} style={{ padding: '2px 7px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 4, font: '600 10px Outfit,sans-serif', color: '#92400E', cursor: 'pointer' }}>Copy</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a href={`https://wa.me/${pinResetResult.phone.replace(/\D/g,'')}?text=${encodeURIComponent(waMsg)}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: '#25D366', color: '#fff', borderRadius: 7, font: '600 12px Outfit,sans-serif', textDecoration: 'none' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d={WA_PATH}/></svg>
+                  Send new PIN via WhatsApp
+                </a>
+                <button onClick={() => setPinResetResult(null)} style={{ padding: '7px 14px', background: 'transparent', border: 'none', font: '400 12px Outfit,sans-serif', color: '#9CA3AF', cursor: 'pointer' }}>Dismiss</button>
+              </div>
             </div>
           );
         })()}
@@ -1734,10 +1863,22 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: 12, font: '400 12px Outfit,sans-serif', color: '#8B7355' }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', font: '400 12px Outfit,sans-serif', color: '#8B7355', alignItems: 'center' }}>
                         {shop.neighbourhood && <span>{shop.neighbourhood}</span>}
                         <span>{shop.phone}</span>
+                        {/* PIN status badge */}
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, background: shop.shop_pin ? '#EDF7E2' : '#FEF3E8', color: shop.shop_pin ? '#5a9e2f' : '#B05810', border: `1px solid ${shop.shop_pin ? '#7DC24370' : '#F0782870'}`, font:'600 10px Outfit,sans-serif' }}>
+                          {shop.shop_pin ? '✓ PIN set' : '⚠ No PIN'}
+                        </span>
                         <Link href={`/sellers/${shop.profile_slug}`} target="_blank" style={{ color: '#F07828', textDecoration: 'none' }}>View profile</Link>
+                        {/* Owner login URL — copy on click */}
+                        <button
+                          onClick={() => navigator.clipboard.writeText('https://mytinyverse.co.ke/my-shop').then(() => { const btn = document.getElementById(`cp-login-${shop.id}`); if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = '🔑 Owner login'; }, 1500); } }).catch(() => {})}
+                          id={`cp-login-${shop.id}`}
+                          style={{ background:'none', border:'none', color:'#8B7355', font:'400 12px Outfit,sans-serif', cursor:'pointer', padding:0, textDecoration:'underline dotted' }}
+                        >
+                          🔑 Owner login
+                        </button>
                         <a href={`https://wa.me/${String(shop.phone||'').replace(/[^0-9]/g,'')}?text=${encodeURIComponent(`Hi ${shop.shop_name||'there'}, this is the MyTinyverse admin team.`)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 6, textDecoration: 'none', font: '600 12px Outfit,sans-serif', color: '#25D366' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
                           WhatsApp
@@ -1808,6 +1949,42 @@ export default function AdminPage() {
                         <label style={{ display: 'block', font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 4 }}>Shop bio</label>
                         <input type="text" value={editShop.shop_bio || ''} onChange={e => setEditShop(s => s ? ({ ...s, shop_bio: e.target.value }) : s)}
                           style={{ width: '100%', height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '400 13px Outfit,sans-serif', boxSizing: 'border-box' }}/>
+                      </div>
+                      {/* PIN reset */}
+                      <div style={{ marginBottom: 10, padding: '10px 12px', background: '#FFFDF9', border: '1.5px dashed #EEE9E0', borderRadius: 8 }}>
+                        <div style={{ font: '500 11px Outfit,sans-serif', color: '#8B7355', marginBottom: 6 }}>
+                          🔑 Reset login PIN <span style={{ font: '400 11px Outfit,sans-serif', color: '#B09070' }}>— enter a new 4-8 digit PIN to replace the existing one</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="New PIN (4-8 digits)"
+                            value={newPinForShop}
+                            onChange={e => setNewPinForShop(e.target.value.replace(/\D/g,'').slice(0,8))}
+                            style={{ flex: 1, height: 34, border: '1.5px solid #EEE9E0', borderRadius: 7, padding: '0 10px', font: '700 15px monospace', letterSpacing: '.12em', boxSizing: 'border-box' }}
+                            maxLength={8}
+                          />
+                          <button
+                            onClick={() => {
+                              if (newPinForShop.length < 4) return;
+                              handlePatch(editShop.id, { shop_pin: newPinForShop }, newPinForShop);
+                            }}
+                            disabled={patchLoading || newPinForShop.length < 4}
+                            style={{ flexShrink: 0, padding: '0 14px', height: 34, background: newPinForShop.length >= 4 ? '#7DC243' : '#EEE9E0', color: newPinForShop.length >= 4 ? '#fff' : '#B09070', border: 'none', borderRadius: 7, font: '600 12px Outfit,sans-serif', cursor: newPinForShop.length >= 4 ? 'pointer' : 'not-allowed' }}
+                          >
+                            Set PIN
+                          </button>
+                          <button
+                            onClick={() => {
+                              const autoPin = String(Math.floor(100000 + Math.random() * 900000));
+                              setNewPinForShop(autoPin);
+                            }}
+                            style={{ flexShrink: 0, padding: '0 10px', height: 34, background: 'transparent', color: '#F07828', border: '1.5px solid #F07828', borderRadius: 7, font: '600 11px Outfit,sans-serif', cursor: 'pointer' }}
+                          >
+                            Auto
+                          </button>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px Outfit,sans-serif', color: '#1A1310', cursor: 'pointer' }}>

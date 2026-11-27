@@ -73,10 +73,10 @@ function CopyLinkButton({ url }: { url: string }) {
   return (
     <div style={{ display:'flex', gap:6 }}>
       <input readOnly value={url} onClick={e => (e.target as HTMLInputElement).select()}
-        style={{ flex:1, background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, padding:'8px 10px', font:'400 11px Outfit,sans-serif', color:'rgba(255,255,255,.9)', outline:'none', minWidth:0 }}
+        style={{ flex:1, background:'#fff', border:'1.5px solid #EEE9E0', borderRadius:8, padding:'8px 10px', font:'400 11px Outfit,sans-serif', color:'#5A3010', outline:'none', minWidth:0 }}
       />
       <button onClick={() => { navigator.clipboard.writeText(url).catch(()=>{}); setCopied(true); setTimeout(()=>setCopied(false),2000); }}
-        style={{ background:'rgba(255,255,255,.95)', color:'#F07828', border:'none', borderRadius:8, font:'700 12px Outfit,sans-serif', padding:'8px 14px', cursor:'pointer', flexShrink:0 }}>
+        style={{ background:'#F07828', color:'#fff', border:'none', borderRadius:8, font:'700 12px Outfit,sans-serif', padding:'8px 14px', cursor:'pointer', flexShrink:0 }}>
         {copied ? '✓ Copied' : 'Copy'}
       </button>
     </div>
@@ -145,18 +145,18 @@ export default function ShopDashboard() {
         }
       `}</style>
 
-      {/* ── Dark header band ─────────────────────────────────────── */}
-      <div style={{ background:'linear-gradient(135deg, #1A1A1A 0%, #2C1810 60%, #1A1A1A 100%)', padding:'32px 32px 36px', position:'relative', overflow:'hidden' }}>
-        {/* Subtle glow */}
-        <div aria-hidden="true" style={{ position:'absolute', top:-60, right:-40, width:260, height:260, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,120,40,.18) 0%, transparent 70%)', pointerEvents:'none' }}/>
-        <div aria-hidden="true" style={{ position:'absolute', bottom:-40, left:60, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle, rgba(125,194,67,.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
+      {/* ── Warm header band ─────────────────────────────────────── */}
+      <div style={{ background:'#FFF5EC', borderBottom:'1px solid rgba(240,120,40,.15)', padding:'32px 32px 36px', position:'relative', overflow:'hidden' }}>
+        {/* Warm decorative blobs */}
+        <div aria-hidden="true" style={{ position:'absolute', top:-60, right:-40, width:260, height:260, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,120,40,.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
+        <div aria-hidden="true" style={{ position:'absolute', bottom:-40, left:60, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle, rgba(125,194,67,.08) 0%, transparent 70%)', pointerEvents:'none' }}/>
 
         <div style={{ position:'relative', zIndex:1 }}>
           {/* Top row: identity */}
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap', marginBottom:28 }}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
               {/* Avatar */}
-              <div style={{ width:52, height:52, borderRadius:14, background:'rgba(240,120,40,.25)', border:'2px solid rgba(240,120,40,.4)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+              <div style={{ width:52, height:52, borderRadius:14, background:'#FFE8D2', border:'2px solid rgba(240,120,40,.35)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
                 {shop.avatar_url
                   ? <img src={shop.avatar_url} alt={shop.shop_name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                   : <span style={{ font:'700 22px Outfit,sans-serif', color:'#F07828' }}>{shop.shop_name.charAt(0).toUpperCase()}</span>
@@ -164,25 +164,25 @@ export default function ShopDashboard() {
               </div>
               <div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                  <h1 style={{ font:'700 20px/1 Outfit,sans-serif', color:'#fff', margin:0 }}>{shop.shop_name}</h1>
+                  <h1 style={{ font:'700 20px/1 Outfit,sans-serif', color:'#1A1310', margin:0 }}>{shop.shop_name}</h1>
                   {shop.verified_shop && (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(240,120,40,.2)', color:'#F4A860', font:'600 10px Outfit,sans-serif', padding:'3px 8px', borderRadius:999, border:'1px solid rgba(240,120,40,.35)' }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'#EDF7E2', color:'#5a9e2f', font:'600 10px Outfit,sans-serif', padding:'3px 8px', borderRadius:999, border:'1px solid #7DC24380' }}>
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                       Verified
                     </span>
                   )}
-                  <span style={{ display:'inline-block', background:`rgba(255,255,255,.1)`, color:'rgba(255,255,255,.65)', font:'500 10px Outfit,sans-serif', padding:'3px 8px', borderRadius:999, textTransform:'capitalize' }}>
+                  <span style={{ display:'inline-block', background:'#FFE8D2', color:'#B05810', font:'500 10px Outfit,sans-serif', padding:'3px 8px', borderRadius:999, textTransform:'capitalize', border:'1px solid rgba(240,120,40,.25)' }}>
                     {tierLabel[shop.subscription_tier] || shop.subscription_tier} Plan
                   </span>
                 </div>
-                <div style={{ font:'400 12px Outfit,sans-serif', color:'rgba(255,255,255,.45)' }}>
+                <div style={{ font:'400 12px Outfit,sans-serif', color:'#A07050' }}>
                   {shop.neighbourhood && `${shop.neighbourhood} · `}Member since {new Date(shop.created_at).toLocaleDateString('en-KE', { month:'long', year:'numeric' })}
                 </div>
               </div>
             </div>
 
             {/* Primary CTA */}
-            <Link href="/sell" style={{ display:'inline-flex', alignItems:'center', gap:8, background:'#F07828', color:'#fff', textDecoration:'none', font:'700 14px Outfit,sans-serif', padding:'11px 20px', borderRadius:12, flexShrink:0 }}>
+            <Link href="/sell" style={{ display:'inline-flex', alignItems:'center', gap:8, background:'#F07828', color:'#fff', textDecoration:'none', font:'700 14px Outfit,sans-serif', padding:'11px 20px', borderRadius:12, flexShrink:0, boxShadow:'0 2px 12px rgba(240,120,40,.3)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Listing
             </Link>
@@ -191,23 +191,23 @@ export default function ShopDashboard() {
           {/* Hero metrics */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }} className="kpi-row">
             {/* Earned */}
-            <div style={{ background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', borderRadius:16, padding:'20px 24px' }}>
-              <div style={{ font:'500 11px Outfit,sans-serif', color:'rgba(255,255,255,.45)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:6 }}>Total Earned</div>
+            <div style={{ background:'#fff', border:'1.5px solid rgba(240,120,40,.18)', borderRadius:16, padding:'20px 24px', boxShadow:'0 1px 8px rgba(240,120,40,.06)' }}>
+              <div style={{ font:'500 11px Outfit,sans-serif', color:'#A07050', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:6 }}>Total Earned</div>
               <div style={{ font:'800 32px/1 Outfit,sans-serif', color:'#F07828', letterSpacing:'-.02em' }}>
                 {fmtKsh(shop.total_earned)}
               </div>
-              <div style={{ font:'400 12px Outfit,sans-serif', color:'rgba(255,255,255,.35)', marginTop:6 }}>
+              <div style={{ font:'400 12px Outfit,sans-serif', color:'#C0A890', marginTop:6 }}>
                 from {fmt(shop.total_sold)} items sold
               </div>
             </div>
 
             {/* Views */}
-            <div style={{ background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', borderRadius:16, padding:'20px 24px' }}>
-              <div style={{ font:'500 11px Outfit,sans-serif', color:'rgba(255,255,255,.45)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:6 }}>Total Views</div>
+            <div style={{ background:'#fff', border:'1.5px solid rgba(125,194,67,.2)', borderRadius:16, padding:'20px 24px', boxShadow:'0 1px 8px rgba(125,194,67,.06)' }}>
+              <div style={{ font:'500 11px Outfit,sans-serif', color:'#6A8C50', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:6 }}>Total Views</div>
               <div style={{ font:'800 32px/1 Outfit,sans-serif', color:'#7DC243', letterSpacing:'-.02em' }}>
                 {fmt(shop.total_views)}
               </div>
-              <div style={{ font:'400 12px Outfit,sans-serif', color:'rgba(255,255,255,.35)', marginTop:6 }}>
+              <div style={{ font:'400 12px Outfit,sans-serif', color:'#A0C880', marginTop:6 }}>
                 across {fmt(shop.total_listings)} listing{shop.total_listings !== 1 ? 's' : ''}
               </div>
             </div>
