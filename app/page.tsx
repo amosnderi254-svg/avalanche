@@ -133,12 +133,6 @@ export default async function Home() {
       {/* ── Recently Sold Ticker ─────────────────────────── */}
       <RecentlySoldTicker />
 
-      {/* ── Seller Earnings Spotlight ─────────────────────── */}
-      <SellerEarningsSpotlight />
-
-      {/* ── Live Demand Feed ──────────────────────────────── */}
-      <LiveDemandFeed />
-
       {/* ── Listings ─────────────────────────────────────── */}
       <div id="listings" style={{ background: 'var(--bg, #FFFDF9)' }}>
         <Suspense fallback={
@@ -438,6 +432,12 @@ export default async function Home() {
         </div>
 
       </section>
+
+      {/* ── Seller Earnings Spotlight ─────────────────────── */}
+      <SellerEarningsSpotlight />
+
+      {/* ── Live Demand Feed ──────────────────────────────── */}
+      <LiveDemandFeed />
 
       {/* ── Dark CTA banner ──────────────────────────────── */}
       <section style={{ padding: '80px 0', background: '#1A1A1A' }}>

@@ -9,7 +9,6 @@ interface DemandData {
   updated_at:   string;
 }
 
-// Map search keywords → category for /sell pre-fill
 function inferCategory(query: string): string {
   const q = query.toLowerCase();
   if (/bike|bicycle|cycle|scooter/.test(q))               return 'bikes';
@@ -30,171 +29,133 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-// Size of pill based on relative count
-function pillSize(count: number, max: number): { fontSize: string; padding: string } {
-  const ratio = max > 0 ? count / max : 0;
-  if (ratio > 0.7) return { fontSize: '14px', padding: '9px 18px' };
-  if (ratio > 0.4) return { fontSize: '13px', padding: '8px 15px' };
-  return { fontSize: '12px', padding: '7px 12px' };
+function pillSize(count: number, max: number) {
+  const r = max > 0 ? count / max : 0;
+  if (r > 0.7) return { fontSize:'14px', padding:'9px 18px' };
+  if (r > 0.4) return { fontSize:'13px', padding:'8px 15px' };
+  return             { fontSize:'12px', padding:'7px 12px' };
 }
 
 type Tab = 'trending' | 'gaps';
 
 export default function LiveDemandFeed() {
-  const router           = useRouter();
-  const [data, setData]  = useState<DemandData | null>(null);
-  const [tab, setTab]    = useState<Tab>('trending');
-  const [loading, setLoading]     = useState(true);
-  const [animKey, setAnimKey]     = useState(0);
+  const router = useRouter();
+  const [data, setData]       = useState<DemandData | null>(null);
+  const [tab, setTab]         = useState<Tab>('trending');
+  const [loading, setLoading] = useState(true);
+  const [animKey, setAnimKey] = useState(0);
   const [countdown, setCountdown] = useState(300);
-  const [hoveredTerm, setHoveredTerm] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const r = await fetch('/api/public/demand', { cache: 'no-store' });
-      if (r.ok) {
-        setData(await r.json());
-        setAnimKey(k => k + 1);
-        setCountdown(300);
-      }
+      if (r.ok) { setData(await r.json()); setAnimKey(k => k + 1); setCountdown(300); }
     } catch { /* silent */ }
     if (!silent) setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-refresh every 5 minutes + countdown ticker
   useEffect(() => {
-    const tick = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) { fetchData(true); return 300; }
-        return c - 1;
-      });
+    const t = setInterval(() => {
+      setCountdown(c => { if (c <= 1) { fetchData(true); return 300; } return c - 1; });
     }, 1000);
-    intervalRef.current = tick;
-    return () => clearInterval(tick);
+    return () => clearInterval(t);
   }, [fetchData]);
 
-  const handleSearch = (query: string) => {
-    router.push(`/?q=${encodeURIComponent(query)}`);
-  };
+  const switchTab = (t: Tab) => { setTab(t); setAnimKey(k => k + 1); };
 
-  const handleGap = (query: string) => {
-    const cat = inferCategory(query);
-    router.push(cat ? `/sell?category=${cat}` : '/sell');
-  };
-
-  const switchTab = (t: Tab) => {
-    setTab(t);
-    setAnimKey(k => k + 1);
-  };
-
-  const noData = !loading && (!data || (tab === 'trending' && data.top_searches.length === 0) || (tab === 'gaps' && data.demand_gaps.length === 0));
-  const terms  = data ? (tab === 'trending' ? data.top_searches : data.demand_gaps) : [];
+  const terms    = data ? (tab === 'trending' ? data.top_searches : data.demand_gaps) : [];
   const maxCount = terms[0]?.count ?? 1;
+  const noData   = !loading && terms.length === 0;
 
   return (
     <section
-      aria-label="Live demand feed"
+      aria-label="Live buyer demand"
       style={{
         background: '#FFFDF9',
         borderTop: '1px solid #EDEAE5',
-        borderBottom: '1px solid #EDEAE5',
-        padding: '48px 0',
+        padding: '64px 0',
       }}
     >
       <style>{`
-        @keyframes pulseGlow { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes pulseLive { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes pillIn {
-          from { opacity:0; transform:translateY(8px) scale(.94) }
-          to   { opacity:1; transform:translateY(0)   scale(1)   }
+          from { opacity:0; transform:translateY(7px) scale(.95) }
+          to   { opacity:1; transform:translateY(0) scale(1) }
         }
-        @keyframes shimmer {
-          0%  { background-position: -400px 0 }
-          100%{ background-position:  400px 0 }
+        @keyframes shimD {
+          0%{background-position:-400px 0} 100%{background-position:400px 0}
         }
         .demand-pill {
-          display: inline-flex; align-items: center; gap: 7px;
-          border-radius: 999px; cursor: pointer; border: none;
-          font-family: Outfit, sans-serif; font-weight: 600;
-          transition: transform .15s, box-shadow .15s, background .15s;
-          position: relative; overflow: hidden;
+          display:inline-flex; align-items:center; gap:7px;
+          border-radius:999px; cursor:pointer; border:none;
+          font-family:Outfit,sans-serif; font-weight:600;
+          transition:transform .15s, box-shadow .15s, background .15s, border-color .15s;
         }
-        .demand-pill:hover { transform: translateY(-2px); }
+        .demand-pill:hover { transform:translateY(-2px); }
         .demand-pill.trending {
-          background: #fff;
-          border: 1.5px solid #E8E0D8;
-          color: #1A1A1A;
-          box-shadow: 0 1px 4px rgba(0,0,0,.06);
+          background:#fff; border:1.5px solid #E8DED4; color:#2A1A0A;
+          box-shadow:0 1px 4px rgba(0,0,0,.05);
         }
         .demand-pill.trending:hover {
-          background: #FFF5EC;
-          border-color: #F07828;
-          box-shadow: 0 4px 14px rgba(240,120,40,.18);
+          background:#FFF5EC; border-color:#F07828;
+          box-shadow:0 4px 16px rgba(240,120,40,.18);
         }
         .demand-pill.gap {
-          background: #FFF9F4;
-          border: 1.5px dashed #F4C49A;
-          color: #7A4A20;
+          background:#F5FFF0; border:1.5px dashed #A8D88A; color:#3A6020;
         }
         .demand-pill.gap:hover {
-          background: #FFF0E0;
-          border-color: #F07828;
-          box-shadow: 0 4px 14px rgba(240,120,40,.14);
+          background:#ECFFE0; border-color:#7DC243;
+          box-shadow:0 4px 14px rgba(125,194,67,.2);
         }
-        .tab-btn {
-          padding: 8px 20px; border-radius: 999px; border: none;
-          font: 600 13px Outfit, sans-serif; cursor: pointer;
-          transition: all .15s;
+        .tab-btn-d {
+          padding:8px 20px; border-radius:999px; border:none;
+          font:600 13px Outfit,sans-serif; cursor:pointer; transition:all .15s;
         }
-        .tab-btn.active {
-          background: #1A1A1A; color: #fff;
-        }
-        .tab-btn.inactive {
-          background: transparent; color: #888;
-        }
-        .tab-btn.inactive:hover { background: #F5EFE6; color: #1A1A1A; }
-        .skeleton-pill {
-          display: inline-block; height: 36px; border-radius: 999px;
-          background: linear-gradient(90deg, #F5EFE6 25%, #FFF5EC 50%, #F5EFE6 75%);
-          background-size: 400px 100%;
-          animation: shimmer 1.4s infinite;
+        .tab-btn-d.active  { background:#1A1A1A; color:#fff; }
+        .tab-btn-d.inactive { background:transparent; color:#999; }
+        .tab-btn-d.inactive:hover { background:#F5EFE6; color:#1A1A1A; }
+        .skel-pill {
+          display:inline-block; height:36px; border-radius:999px;
+          background:linear-gradient(90deg,#F5EFE6 25%,#FFF5EC 50%,#F5EFE6 75%);
+          background-size:400px 100%; animation:shimD 1.4s infinite;
         }
       `}</style>
 
       <div className="container">
         {/* Header */}
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:24 }}>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:14, marginBottom:28 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#ECFDF5', border:'1px solid #BBF7D0', borderRadius:999, padding:'4px 10px' }}>
-                <span style={{ width:6, height:6, borderRadius:'50%', background:'#22C55E', display:'inline-block', animation:'pulseGlow 1.6s infinite' }}/>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:'#22C55E', display:'inline-block', animation:'pulseLive 1.6s infinite' }}/>
                 <span style={{ font:'600 10px Outfit,sans-serif', color:'#15803D', textTransform:'uppercase', letterSpacing:'.08em' }}>Live</span>
               </span>
               {data && (
-                <span style={{ font:'400 12px Outfit,sans-serif', color:'#BBB' }}>
-                  Updated {timeAgo(data.updated_at)} · refreshing in {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2,'0')}
+                <span style={{ font:'400 12px Outfit,sans-serif', color:'#C0A890' }}>
+                  Updated {timeAgo(data.updated_at)} · refreshing in {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
                 </span>
               )}
             </div>
             <h2 style={{ font:'800 clamp(20px,3vw,28px)/1.2 Outfit,sans-serif', color:'#1A1A1A', margin:0, letterSpacing:'-.02em' }}>
               What parents are searching for
             </h2>
-            <p style={{ font:'400 14px Outfit,sans-serif', color:'#999', margin:'4px 0 0' }}>
+            <p style={{ font:'400 14px Outfit,sans-serif', color:'#A07050', margin:'4px 0 0' }}>
               {tab === 'trending'
                 ? 'Click any term to browse matching listings.'
-                : 'These searches found nothing — a gap you can fill as a seller.'}
+                : 'Zero-result searches — a gap only you can fill.'}
             </p>
           </div>
 
           {/* Tab switcher */}
-          <div style={{ display:'flex', gap:6, background:'#F5EFE6', padding:4, borderRadius:999 }}>
-            <button className={`tab-btn ${tab === 'trending' ? 'active' : 'inactive'}`} onClick={() => switchTab('trending')}>
+          <div style={{ display:'flex', gap:5, background:'#F5EFE6', padding:4, borderRadius:999 }}>
+            <button className={`tab-btn-d ${tab === 'trending' ? 'active' : 'inactive'}`} onClick={() => switchTab('trending')}>
               🔍 Trending
             </button>
-            <button className={`tab-btn ${tab === 'gaps' ? 'active' : 'inactive'}`} onClick={() => switchTab('gaps')}>
+            <button className={`tab-btn-d ${tab === 'gaps' ? 'active' : 'inactive'}`} onClick={() => switchTab('gaps')}>
               💡 Demand Gaps
             </button>
           </div>
@@ -203,49 +164,53 @@ export default function LiveDemandFeed() {
         {/* Pill cloud */}
         <div
           key={`${animKey}-${tab}`}
-          style={{ display:'flex', flexWrap:'wrap', gap:10, minHeight:80, alignItems:'flex-start', alignContent:'flex-start' }}
+          style={{ display:'flex', flexWrap:'wrap', gap:10, minHeight:72, alignItems:'flex-start', alignContent:'flex-start' }}
         >
           {loading ? (
-            // Skeleton
-            [100,80,120,90,110,70,95,130,85,100].map((w, i) => (
-              <span key={i} className="skeleton-pill" style={{ width:w, animationDelay:`${i * .08}s` }}/>
+            [100,78,118,88,108,70,94,128,82,100].map((w, i) => (
+              <span key={i} className="skel-pill" style={{ width:w, animationDelay:`${i * .08}s` }}/>
             ))
           ) : noData ? (
-            <div style={{ padding:'24px 0', color:'#CCC', font:'400 14px Outfit,sans-serif' }}>
+            <div style={{ padding:'20px 0', color:'#D0C0B0', font:'400 14px Outfit,sans-serif' }}>
               {tab === 'gaps' ? 'No demand gaps tracked yet — keep growing the marketplace!' : 'No search data yet.'}
             </div>
           ) : (
             terms.map((t, i) => {
-              const size = pillSize(t.count, maxCount);
-              const isHovered = hoveredTerm === t.query;
+              const size     = pillSize(t.count, maxCount);
+              const isHov    = hovered === t.query;
+              const isTrend  = tab === 'trending';
               return (
                 <button
                   key={`${animKey}-${t.query}`}
-                  className={`demand-pill ${tab === 'trending' ? 'trending' : 'gap'}`}
-                  style={{
-                    ...size,
-                    animation: `pillIn .3s ease ${i * .04}s both`,
-                  }}
-                  onClick={() => tab === 'trending' ? handleSearch(t.query) : handleGap(t.query)}
-                  onMouseEnter={() => setHoveredTerm(t.query)}
-                  onMouseLeave={() => setHoveredTerm(null)}
-                  title={tab === 'gaps' ? `${t.count} buyers searched this — no listings found` : `${t.count} searches in the last 30 days`}
+                  className={`demand-pill ${isTrend ? 'trending' : 'gap'}`}
+                  style={{ ...size, animation:`pillIn .28s ease ${i * .038}s both` }}
+                  onClick={() => isTrend
+                    ? router.push(`/?q=${encodeURIComponent(t.query)}`)
+                    : router.push(inferCategory(t.query) ? `/sell?category=${inferCategory(t.query)}` : '/sell')
+                  }
+                  onMouseEnter={() => setHovered(t.query)}
+                  onMouseLeave={() => setHovered(null)}
+                  title={isTrend
+                    ? `${t.count} searches in the last 30 days`
+                    : `${t.count} buyers searched this — no listings found`}
                 >
-                  {tab === 'trending' ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={isHovered ? '#F07828' : '#AAA'} strokeWidth="2.5" style={{ transition:'stroke .15s', flexShrink:0 }}>
+                  {isTrend ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                      stroke={isHov ? '#F07828' : '#C0A890'} strokeWidth="2.5"
+                      style={{ transition:'stroke .15s', flexShrink:0 }}>
                       <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
                     </svg>
                   ) : (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="2.5" style={{ flexShrink:0 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                      stroke="#7DC243" strokeWidth="2.5" style={{ flexShrink:0 }}>
                       <polyline points="12 5 12 19"/><polyline points="5 12 12 5 19 12"/>
                     </svg>
                   )}
                   <span style={{ textTransform:'capitalize' }}>{t.query}</span>
                   <span style={{
-                    fontSize:'10px', fontWeight:700,
-                    background: tab === 'trending' ? (isHovered ? '#F07828' : '#F5EFE6') : '#F4C49A',
-                    color: tab === 'trending' ? (isHovered ? '#fff' : '#C06030') : '#7A4A20',
-                    borderRadius:999, padding:'2px 7px',
+                    fontSize:'10px', fontWeight:700, borderRadius:999, padding:'2px 7px',
+                    background: isTrend ? (isHov ? '#F07828' : '#FFE8D2') : (isHov ? '#7DC243' : '#D4EFC0'),
+                    color: isTrend ? (isHov ? '#fff' : '#B05810') : (isHov ? '#fff' : '#3A6020'),
                     transition:'background .15s, color .15s',
                   }}>
                     {t.count}×
@@ -256,13 +221,13 @@ export default function LiveDemandFeed() {
           )}
         </div>
 
-        {/* Footer CTA row */}
+        {/* Footer */}
         {!loading && !noData && (
-          <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid #F0EBE4', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+          <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid #EDEAE5', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
             {tab === 'trending' ? (
               <>
-                <span style={{ font:'400 13px Outfit,sans-serif', color:'#AAA' }}>
-                  Showing top {terms.length} searches · last 30 days
+                <span style={{ font:'400 13px Outfit,sans-serif', color:'#C0A890' }}>
+                  Top {terms.length} searches · last 30 days
                 </span>
                 <a href="/?q=" style={{ font:'600 13px Outfit,sans-serif', color:'#F07828', textDecoration:'none' }}>
                   Browse all listings →
@@ -272,17 +237,17 @@ export default function LiveDemandFeed() {
               <>
                 <div>
                   <span style={{ font:'600 13px Outfit,sans-serif', color:'#1A1A1A', display:'block', marginBottom:2 }}>
-                    These buyers found nothing. You could be the first.
+                    These buyers found nothing. You could be first.
                   </span>
-                  <span style={{ font:'400 12px Outfit,sans-serif', color:'#AAA' }}>
-                    Click any gap above to open the sell form with the right category pre-filled.
+                  <span style={{ font:'400 12px Outfit,sans-serif', color:'#C0A890' }}>
+                    Click any gap above — the sell form opens with the right category pre-filled.
                   </span>
                 </div>
                 <a
                   href="/sell"
                   style={{
                     display:'inline-flex', alignItems:'center', gap:8,
-                    background:'#F07828', color:'#fff',
+                    background:'#7DC243', color:'#fff',
                     font:'700 13px Outfit,sans-serif',
                     padding:'10px 20px', borderRadius:11,
                     textDecoration:'none', flexShrink:0,
