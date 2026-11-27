@@ -56,7 +56,7 @@ interface StatsData {
   demand_gaps: { query: string; count: number }[];
 }
 
-type AdminView   = 'home' | 'queue' | 'post' | 'market' | 'blog' | 'shops';
+type AdminView   = 'home' | 'queue' | 'notifications' | 'post' | 'market' | 'blog' | 'shops';
 type ModTab      = 'pending' | 'live' | 'rejected';
 type BlogEdMode  = 'generate' | 'manual';
 
@@ -104,6 +104,7 @@ const WA_PATH = 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.
 const NAV_ITEMS: { id: AdminView; label: string; icon: string }[] = [
   { id: 'home',   label: 'Command', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
   { id: 'queue',  label: 'Queue',   icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+  { id: 'notifications', label: 'Activity', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0' },
   { id: 'post',   label: 'Post',    icon: 'M12 5v14M5 12h14' },
   { id: 'market', label: 'Market',  icon: 'M18 20V10M12 20V4M6 20v-6' },
   { id: 'blog',   label: 'Blog',    icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
@@ -615,21 +616,30 @@ export default function AdminPage() {
             ))}
           </div>
         ) : stats ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
-            {[
-              { label: 'Total Revenue',  value: fmtKES(stats.tiles.total_revenue), sub: `KES ${(stats.tiles.total_revenue / Math.max(stats.tiles.total_listings||1, 1)).toFixed(0)} avg`, accent: false },
-              { label: 'Live Listings',  value: stats.tiles.live_listings, sub: `${stats.tiles.approval_rate?.toFixed(0)||0}% approval rate`, accent: true },
-              { label: 'Pending Review', value: stats.tiles.pending_review || 0, sub: 'Awaiting moderation', accent: (stats.tiles.pending_review || 0) > 0 },
-              { label: 'Total Views',    value: (stats.tiles.total_views || 0).toLocaleString(), sub: 'All-time listing views', accent: false },
-              { label: 'WA Clicks',      value: (stats.tiles.total_wa_clicks || 0).toLocaleString(), sub: 'WhatsApp contact taps', accent: false },
-              { label: 'Listed (30d)',   value: stats.tiles.submitted_last_30d || 0, sub: `${stats.demand_gaps?.length||0} demand gaps`, accent: false },
-            ].map(tile => (
-              <div key={tile.label} style={{
-                ...S.card, padding: '18px 20px',
-              }}>
-                <p style={{ font: '500 11px Outfit,sans-serif', color: '#8B7355', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.07em' }}>{tile.label}</p>
-                <p style={{ font: '700 26px Outfit,sans-serif', color: tile.accent ? '#F07828' : '#1A1310', margin: '0 0 4px' }}>{tile.value}</p>
-                <p style={{ font: '400 11px Outfit,sans-serif', color: '#B09070', margin: 0 }}>{tile.sub}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+            {([
+              { label: 'Total Revenue', value: fmtKES(stats.tiles.total_revenue), sub: `avg ${fmtKES(Math.round(stats.tiles.total_revenue / Math.max(stats.tiles.total_listings||1,1)))} / listing`, color: '#F07828', bg: '#FFF4EE', filled: false, icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+              { label: 'Live Listings', value: stats.tiles.live_listings, sub: `${stats.tiles.approval_rate?.toFixed(0)||0}% approval rate`, color: '#7DC243', bg: '#EDF7E2', filled: false, icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+              { label: 'Pending Review', value: stats.tiles.pending_review || 0, sub: (stats.tiles.pending_review||0) > 0 ? 'Action required' : 'All clear', color: (stats.tiles.pending_review||0) > 0 ? '#E65100' : '#7DC243', bg: (stats.tiles.pending_review||0) > 0 ? '#FFF3E0' : '#EDF7E2', filled: false, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+              { label: 'Total Views', value: (stats.tiles.total_views || 0).toLocaleString(), sub: 'All-time listing views', color: '#6366F1', bg: '#EEF2FF', filled: false, icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
+              { label: 'WA Clicks', value: (stats.tiles.total_wa_clicks || 0).toLocaleString(), sub: 'WhatsApp contact taps', color: '#25D366', bg: '#E8F5E5', filled: true, icon: WA_PATH },
+              { label: 'Listed (30d)', value: stats.tiles.submitted_last_30d || 0, sub: `${stats.demand_gaps?.length||0} demand gaps found`, color: '#8B5CF6', bg: '#F5F3FF', filled: false, icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+            ] as { label: string; value: string|number; sub: string; color: string; bg: string; filled: boolean; icon: string }[]).map(tile => (
+              <div key={tile.label} style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 16, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ font: '500 11px Outfit,sans-serif', color: '#8B7355', margin: 0, textTransform: 'uppercase', letterSpacing: '.08em' }}>{tile.label}</p>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: tile.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {tile.filled ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={tile.color}><path d={tile.icon}/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tile.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={tile.icon}/></svg>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p style={{ font: '800 28px Outfit,sans-serif', color: '#1A1310', margin: '0 0 3px', lineHeight: 1 }}>{tile.value}</p>
+                  <p style={{ font: '400 11px Outfit,sans-serif', color: '#B09070', margin: 0 }}>{tile.sub}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -693,6 +703,14 @@ export default function AdminPage() {
                   <div style={{ font: '600 13px Outfit,sans-serif', color: '#F07828', flexShrink: 0 }}>
                     {(l.price ?? 1) === 0 ? 'Free' : fmtKES(l.price || 0)}
                   </div>
+                  {l.seller_phone && (
+                    <a
+                      href={`https://wa.me/${String(l.seller_phone).replace(/[^0-9]/g,'')}?text=${encodeURIComponent(`Hi ${l.seller_name||'there'}, this is about your listing "${l.title||''}" on MyTinyverse.`)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 8, textDecoration: 'none', flexShrink: 0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
@@ -711,6 +729,121 @@ export default function AdminPage() {
           <p style={{ font: '400 13px Outfit,sans-serif', color: '#5C4B3A', margin: 0 }}>View the live marketplace</p>
           <Link href="/" target="_blank" style={{ font: '600 13px Outfit,sans-serif', color: '#F07828', textDecoration: 'none' }}>Open site</Link>
         </div>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // VIEW: NOTIFICATIONS (Activity Feed)
+  // ========================================================================
+  function renderNotifications() {
+    if (!stats) return null;
+    const newItems = stats.recent_pending || [];
+    const expiringItems = stats.expiring_soon || [];
+    const hasActivity = newItems.length > 0 || expiringItems.length > 0;
+
+    return (
+      <div>
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ font: '700 20px Outfit,sans-serif', color: '#1A1310', margin: '0 0 4px' }}>Activity Feed</p>
+          <p style={{ font: '400 13px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>New submissions and listings needing attention</p>
+        </div>
+
+        {!hasActivity && (
+          <div style={{ textAlign: 'center', padding: 60, color: '#8B7355' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C8B89A" strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}>
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <p style={{ font: '500 15px Outfit,sans-serif', margin: 0 }}>All clear - no pending activity</p>
+          </div>
+        )}
+
+        {newItems.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F07828' }}/>
+              <p style={{ font: '600 13px Outfit,sans-serif', color: '#5C4B3A', margin: 0, textTransform: 'uppercase', letterSpacing: '.06em' }}>New Submissions</p>
+              <span style={{ marginLeft: 'auto', background: '#FFF4EE', color: '#F07828', borderRadius: 10, padding: '2px 8px', font: '700 11px Outfit,sans-serif' }}>{newItems.length}</span>
+            </div>
+            <div style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 14, overflow: 'hidden' }}>
+              {newItems.map((l, i) => {
+                const waNum = String(l.seller_phone || '').replace(/[^0-9]/g, '');
+                const waMsg = encodeURIComponent(`Hi ${l.seller_name||'there'}, this is about your listing "${l.title||''}" on MyTinyverse.`);
+                return (
+                  <div key={l.id || i} style={{
+                    padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+                    borderBottom: i < newItems.length - 1 ? '1px solid #F5F0E8' : 'none',
+                  }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FFF4EE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F07828" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ font: '600 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title || 'Untitled'}</p>
+                      <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>{categoryLabel(l.category||'')} - {l.location || 'Unknown area'}</p>
+                    </div>
+                    <div style={{ font: '600 13px Outfit,sans-serif', color: '#F07828', flexShrink: 0 }}>
+                      {(l.price ?? 1) === 0 ? 'Free' : fmtKES(l.price || 0)}
+                    </div>
+                    {waNum && (
+                      <a href={`https://wa.me/${waNum}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 8, textDecoration: 'none', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+                      </a>
+                    )}
+                    <button onClick={() => setView('queue')} style={{ padding: '6px 12px', background: '#F07828', color: '#fff', border: 'none', borderRadius: 8, font: '600 12px Outfit,sans-serif', cursor: 'pointer', flexShrink: 0 }}>
+                      Review
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {expiringItems.length > 0 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#E65100' }}/>
+              <p style={{ font: '600 13px Outfit,sans-serif', color: '#5C4B3A', margin: 0, textTransform: 'uppercase', letterSpacing: '.06em' }}>Expiring Soon</p>
+              <span style={{ marginLeft: 'auto', background: '#FFF3E0', color: '#E65100', borderRadius: 10, padding: '2px 8px', font: '700 11px Outfit,sans-serif' }}>{expiringItems.length}</span>
+            </div>
+            <div style={{ background: '#fff', border: '1.5px solid #EEE9E0', borderRadius: 14, overflow: 'hidden' }}>
+              {expiringItems.map((l, i) => {
+                const waNum = String(l.seller_phone || '').replace(/[^0-9]/g, '');
+                const waMsg = encodeURIComponent(`Hi ${l.seller_name||'there'}, your listing "${l.title||''}" on MyTinyverse is expiring soon. Would you like to renew it?`);
+                return (
+                  <div key={l.id || i} style={{
+                    padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+                    borderBottom: i < expiringItems.length - 1 ? '1px solid #F5F0E8' : 'none',
+                  }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65100" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ font: '600 14px Outfit,sans-serif', color: '#1A1310', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title || 'Untitled'}</p>
+                      <p style={{ font: '400 12px Outfit,sans-serif', color: '#8B7355', margin: 0 }}>{l.seller_name || 'Unknown seller'} - {l.location || 'Unknown area'}</p>
+                    </div>
+                    {l.expires_at && (
+                      <div style={{ font: '600 12px Outfit,sans-serif', color: '#E65100', flexShrink: 0 }}>
+                        {new Date(l.expires_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
+                      </div>
+                    )}
+                    {waNum && (
+                      <a href={`https://wa.me/${waNum}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 8, textDecoration: 'none', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1604,7 +1737,10 @@ export default function AdminPage() {
                         {shop.neighbourhood && <span>{shop.neighbourhood}</span>}
                         <span>{shop.phone}</span>
                         <Link href={`/sellers/${shop.profile_slug}`} target="_blank" style={{ color: '#F07828', textDecoration: 'none' }}>View profile</Link>
-                        <a href={`https://wa.me/${shop.phone}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', textDecoration: 'none' }}>WhatsApp</a>
+                        <a href={`https://wa.me/${String(shop.phone||'').replace(/[^0-9]/g,'')}?text=${encodeURIComponent(`Hi ${shop.shop_name||'there'}, this is the MyTinyverse admin team.`)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#E8F5E5', border: '1px solid #25D36660', borderRadius: 6, textDecoration: 'none', font: '600 12px Outfit,sans-serif', color: '#25D366' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="#25D366"><path d={WA_PATH}/></svg>
+                          WhatsApp
+                        </a>
                       </div>
                       {shop.shop_bio && <p style={{ font: '400 12px/1.5 Outfit,sans-serif', color: '#666', margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{shop.shop_bio}</p>}
                     </div>
@@ -2026,6 +2162,11 @@ export default function AdminPage() {
                     {pendingCount}
                   </span>
                 )}
+                {item.id === 'notifications' && stats && ((stats.recent_pending?.length || 0) + (stats.expiring_soon?.length || 0)) > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#E65100', color: '#fff', borderRadius: 10, padding: '1px 7px', font: '700 11px Outfit,sans-serif' }}>
+                    {(stats.recent_pending?.length || 0) + (stats.expiring_soon?.length || 0)}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -2089,9 +2230,10 @@ export default function AdminPage() {
         {/* Scrollable content */}
         <main style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 20px' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
-            {view === 'home'   && renderHome()}
-            {view === 'queue'  && renderQueue()}
-            {view === 'post'   && renderPost()}
+            {view === 'home'          && renderHome()}
+            {view === 'queue'         && renderQueue()}
+            {view === 'notifications' && renderNotifications()}
+            {view === 'post'          && renderPost()}
             {view === 'market' && renderMarket()}
             {view === 'blog'   && renderBlog()}
             {view === 'shops'  && renderShops()}
@@ -2128,6 +2270,12 @@ export default function AdminPage() {
                   }}>
                     {pendingCount > 9 ? '9+' : pendingCount}
                   </div>
+                )}
+                {item.id === 'notifications' && stats && ((stats.recent_pending?.length || 0) + (stats.expiring_soon?.length || 0)) > 0 && (
+                  <div style={{
+                    position: 'absolute', top: 7, right: 'calc(50% - 14px)',
+                    width: 8, height: 8, borderRadius: '50%', background: '#E65100',
+                  }}/>
                 )}
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? '2.2' : '1.6'} strokeLinecap="round" strokeLinejoin="round">
                   <path d={item.icon}/>
