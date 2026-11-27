@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import { getFeeTier } from '@/lib/constants';
@@ -273,6 +273,7 @@ function PhotoUploader({ photos, setPhotos }: { photos: UploadedPhoto[]; setPhot
 /* ── Main page ────────────────────────────────────────────────── */
 export default function SellPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /* form state */
   const [step, setStep]           = useState<Step>('details');
@@ -352,6 +353,16 @@ export default function SellPage() {
       // sessionStorage blocked or corrupt -- silent fail
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Pre-select category from ?category= URL param (overrides draft) ──
+     e.g. /sell?category=strollers from the Quick-List Action Strip on the homepage.
+     Runs after the draft-restore effect so it always wins. */
+  useEffect(() => {
+    const param = searchParams.get('category');
+    if (!param) return;
+    const valid = CATEGORIES.find(c => c.id === param);
+    if (valid) setCategory(valid.id);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Persist form draft to sessionStorage on every change ── */
   useEffect(() => {

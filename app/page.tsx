@@ -74,11 +74,15 @@ const HOW_IT_WORKS = [
   },
 ];
 
-const TRUST_STATS = [
-  { value: 'KSh 99',  label: 'to list any item',       icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-  { value: 'Free',    label: 'to browse everything',    icon: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z' },
-  { value: 'Direct',  label: 'WhatsApp to sellers',     icon: 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z' },
-  { value: 'Nairobi', label: 'parent community',        icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm10 10v-2a4 4 0 00-3-3.87' },
+const QUICK_CATEGORIES = [
+  { id: 'strollers', label: 'Strollers',  icon: 'M3 12h1M5 6h14M5 6a2 2 0 00-2 2v4h18V8a2 2 0 00-2-2M19 12h2M7 12v5a2 2 0 002 2h6a2 2 0 002-2v-5M9 19a2 2 0 01-2 2 2 2 0 01-2-2M17 19a2 2 0 01-2 2 2 2 0 01-2-2' },
+  { id: 'bikes',     label: 'Bikes',      icon: 'M5 19a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4zm-9-9l2-5h5l2 4H10zm-1 0l-2 1-2 4' },
+  { id: 'shoes',     label: 'Shoes',      icon: 'M2 18h20M4 18V9a4 4 0 014-4h8a4 4 0 014 4v9M8 18v-4h8v4' },
+  { id: 'toys',      label: 'Toys',       icon: 'M12 2a5 5 0 015 5v1h1a2 2 0 010 4h-1v1a5 5 0 01-10 0v-1H6a2 2 0 010-4h1V7a5 5 0 015-5zM9 10h6' },
+  { id: 'books',     label: 'Books',      icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z' },
+  { id: 'car-seats', label: 'Car Seats',  icon: 'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3M9 17v4m0 0h6m-6 0H7m8 0h2m1-4h3a2 2 0 002-2v-4a2 2 0 00-2-2h-3' },
+  { id: 'clothing',  label: 'Clothing',   icon: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z' },
+  { id: 'baby-gear', label: 'Baby Gear',  icon: 'M12 2C9.24 2 7 4.24 7 7v1H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2h-2V7c0-2.76-2.24-5-5-5zm0 2a3 3 0 013 3v1H9V7a3 3 0 013-3zm-1 10h2v2h-2v-2zm0-4h2v2h-2v-2z' },
 ];
 
 export default function Home() {
@@ -199,65 +203,78 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Trust stats ──────────────────────────────────── */}
-      <section style={{
-        padding: '60px 0',
-        background: 'var(--bg, #FFFDF9)',
-        borderTop: '1px solid var(--border)',
-      }}>
+      {/* ── Quick-List Action Strip ───────────────────────────────── */}
+      <section style={{ padding: '64px 0', background: 'var(--bg, #FFFDF9)', borderTop: '1px solid var(--border)' }}>
         <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 36 }}>
+            <p style={{
+              font: '700 11px Outfit,sans-serif',
+              color: 'var(--orange, #F07828)',
+              textTransform: 'uppercase',
+              letterSpacing: '.1em',
+              margin: '0 0 10px',
+            }}>
+              Start selling
+            </p>
+            <h2 style={{
+              font: '800 clamp(22px,4vw,32px)/1.15 Outfit,sans-serif',
+              color: 'var(--text-1)',
+              margin: '0 0 10px',
+              letterSpacing: '-.02em',
+            }}>
+              What are you selling today?
+            </h2>
+            <p style={{
+              font: '400 15px/1.5 Outfit,sans-serif',
+              color: 'var(--text-3)',
+              margin: 0,
+            }}>
+              Pick a category — your listing goes live in under 5 minutes.
+            </p>
+          </div>
+
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 1,
-            border: '1.5px solid var(--border)',
-            borderRadius: 16,
-            overflow: 'hidden',
-            background: 'var(--border)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 10,
+            justifyContent: 'center',
+            marginBottom: 28,
           }}>
-            {TRUST_STATS.map((stat) => (
-              <div
-                key={stat.value}
+            {QUICK_CATEGORIES.map(cat => (
+              <Link
+                key={cat.id}
+                href={`/sell?category=${cat.id}`}
                 style={{
-                  padding: '32px 24px',
-                  background: '#fff',
-                  textAlign: 'center',
-                  display: 'flex',
-                  flexDirection: 'column',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 8,
+                  padding: '12px 20px',
+                  background: '#fff',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 100,
+                  font: '600 14px Outfit,sans-serif',
+                  color: 'var(--text-1)',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <div style={{
-                  width: 44, height: 44,
-                  background: '#FFF3EB',
-                  borderRadius: 12,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--orange, #F07828)" strokeWidth="1.75"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d={stat.icon}/>
-                  </svg>
-                </div>
-                <div style={{
-                  font: '800 26px/1 Outfit,sans-serif',
-                  color: 'var(--text-1)',
-                  letterSpacing: '-.02em',
-                }}>
-                  {stat.value}
-                </div>
-                <div style={{
-                  font: '500 13px Outfit,sans-serif',
-                  color: 'var(--text-3)',
-                }}>
-                  {stat.label}
-                </div>
-              </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="var(--orange, #F07828)" strokeWidth="1.75"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                >
+                  <path d={cat.icon}/>
+                </svg>
+                {cat.label}
+              </Link>
             ))}
           </div>
+
+          <p style={{ textAlign: 'center', font: '400 13px Outfit,sans-serif', color: 'var(--text-3)', margin: 0 }}>
+            Listing is KSh 99.{' '}
+            <Link href="/sell" style={{ color: 'var(--orange, #F07828)', textDecoration: 'none', fontWeight: 600 }}>
+              Not sure what to list? Start from scratch →
+            </Link>
+          </p>
         </div>
       </section>
 
