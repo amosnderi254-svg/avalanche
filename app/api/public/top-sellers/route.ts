@@ -8,12 +8,10 @@ export async function GET() {
   const supabase = createServerClient();
 
   // 1. Fetch top shops ordered by total_sold — now includes shop_banner_url
+  // eslint-disable-next-line max-len
   const { data: shops, error } = await supabase
     .from('seller_profiles')
-    .select(
-      'id, shop_name, profile_slug, avatar_url, shop_banner_url, ' +
-      'verified_shop, total_sold, neighbourhood, phone'
-    )
+    .select('id, shop_name, profile_slug, avatar_url, shop_banner_url, verified_shop, total_sold, neighbourhood, phone')
     .eq('is_shop', true)
     .order('total_sold', { ascending: false })
     .limit(10);
