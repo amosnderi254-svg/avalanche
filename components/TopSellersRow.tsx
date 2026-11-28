@@ -227,17 +227,6 @@ export default function TopSellersRow() {
           gap: 8px;
         }
 
-        /* ── Attribution ─────────────────────────── */
-        .tsr-attr {
-          position: absolute;
-          bottom: 4px;
-          left: 7px;
-          font: 500 9px Outfit,sans-serif;
-          color: rgba(255,255,255,.65);
-          letter-spacing: .03em;
-          z-index: 2;
-          pointer-events: none;
-        }
 
         @media (max-width: 480px) {
           .tsr-card, .tsr-skeleton { flex: 0 0 240px; }
@@ -294,7 +283,6 @@ export default function TopSellersRow() {
             : sellers.map(seller => {
                 const initials = getInitials(seller.shop_name);
                 const heroSrc  = getCardImage(seller);
-                const isUnsplash = heroSrc.includes('unsplash.com');
 
                 return (
                   <Link
@@ -309,10 +297,6 @@ export default function TopSellersRow() {
                         alt={`${seller.shop_name} items`}
                         initials={initials}
                       />
-                      {/* Unsplash attribution — required by Unsplash guidelines */}
-                      {isUnsplash && (
-                        <span className="tsr-attr">Photo: Unsplash</span>
-                      )}
                     </div>
 
                     {/* Verified badge overlaid on image */}
