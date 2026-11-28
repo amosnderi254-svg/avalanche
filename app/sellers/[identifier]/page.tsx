@@ -4,10 +4,53 @@ import Link from 'next/link';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import EmptyState from '@/components/EmptyState';
+import { createAdminClient, createServerClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mytinyverse.co.ke';
+
+// ── Direct DB fetch (avoids internal HTTP round-trip) ─────────────────────
+const SHOP_SELECT =
+  'id, phone, display_name, bio, neighbourhood, avatar_url, profile_slug, ' +
+  'total_sold, created_at, is_shop, shop_name, shop_bio, shop_banner_url, ' +
+  'shop_areas, subscription_tier, subscription_expires_at, verified_shop';
+
+function looksLikePhone(s: string) {
+  const d = s.replace(/\D/g, '');
+  return d.length >= 9 && /^\d+$/.test(s.replace(/[+\-\s]/g, ''));
+}
+function normalizePhone(raw: string) {
+  const d = raw.replace(/\D/g, '');
+  if (d.startsWith('254')) return d;
+  if (d.startsWith('0'))   return '254' + d.slice(1);
+  return d;
+}
+
+async function fetchProfile(identifier: string) {
+  const supabase = createAdminClient();
+  if (looksLikePhone(identifier)) {
+    const phone = normalizePhone(identifier);
+    const { data } = await supabase.from('seller_profiles').select(SHOP_SELECT).eq('phone', phone).single();
+    return data;
+  }
+  const { data } = await supabase.from('seller_profiles').select(SHOP_SELECT).eq('profile_slug', identifier).single();
+  return data;
+}
+
+async function fetchListings(phone: string) {
+  const now = new Date().toISOString();
+  const anonClient = createServerClient();
+  const { data, count } = await anonClient
+    .from('listings')
+    .select('id, title, price, category, condition, images, location, created_at', { count: 'exact' })
+    .eq('seller_phone', phone)
+    .eq('status', 'live')
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .order('created_at', { ascending: false })
+    .limit(12);
+  return { listings: data ?? [], listingCount: count ?? 0 };
+}
 
 // ── Types ─────────────────────────────────────────────────
 interface SellerProfile {
@@ -53,10 +96,7 @@ function initials(name: string) {
 export async function generateMetadata(
   { params }: { params: { identifier: string } },
 ): Promise<Metadata> {
-  const res = await fetch(`${APP_URL}/api/sellers/${params.identifier}`, { cache: 'no-store' });
-  if (!res.ok) return { title: 'Profile not found | MyTinyverse' };
-
-  const { profile } = await res.json() as { profile: SellerProfile };
+  const profile = await fetchProfile(params.identifier) as SellerProfile | null;
   if (!profile) return { title: 'Profile not found | MyTinyverse' };
 
   const name  = profile.is_shop ? (profile.shop_name || profile.display_name) : profile.display_name;
@@ -129,16 +169,10 @@ const WA_PATH = 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.
 export default async function SellerProfilePage(
   { params }: { params: { identifier: string } },
 ) {
-  const res = await fetch(`${APP_URL}/api/sellers/${params.identifier}`, { cache: 'no-store' });
-  if (!res.ok) notFound();
-
-  const { profile, listings, listingCount } = await res.json() as {
-    profile: SellerProfile;
-    listings: ListingSnippet[];
-    listingCount: number;
-  };
-
+  const profile = await fetchProfile(params.identifier) as SellerProfile | null;
   if (!profile) notFound();
+
+  const { listings, listingCount } = await fetchListings(profile.phone);
 
   if (params.identifier !== profile.profile_slug) {
     redirect(`/sellers/${profile.profile_slug}`);
