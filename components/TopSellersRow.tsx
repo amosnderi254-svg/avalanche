@@ -164,15 +164,17 @@ export default function TopSellersRow() {
           flex: 1;
           display: flex;
           flex-direction: column;
+          position: relative;
+          z-index: 1;
         }
 
         /* ── Avatar row (overlapping) ────────────── */
         .tsr-avatar-row {
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           gap: 10px;
-          margin-top: -22px;
-          margin-bottom: 12px;
+          margin-top: -20px;
+          margin-bottom: 14px;
         }
         .tsr-avatar {
           width: 44px;
@@ -287,7 +289,7 @@ export default function TopSellersRow() {
                 return (
                   <Link
                     key={seller.id}
-                    href={`/shop/${seller.profile_slug}`}
+                    href={`/sellers/${seller.profile_slug}`}
                     className="tsr-card"
                   >
                     {/* Hero image */}
