@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
-import { verifyPin, makeSessionCookie, newSession } from '@/lib/shop-auth';
+import { verifyPin, newSession, createSessionToken, SESSION_COOKIE } from '@/lib/shop-auth';
 import { getClientIp } from '@/lib/rate-limit';
 
 // Simple in-memory brute-force guard (per IP, like admin-auth)
@@ -97,10 +97,16 @@ export async function POST(req: NextRequest) {
   failStore.delete(ip);
 
   const session = newSession(shop.id, shop.phone);
-  const cookie  = makeSessionCookie(session);
+  const token   = createSessionToken(session);
 
-  return NextResponse.json(
-    { ok: true, shop_name: shop.shop_name },
-    { headers: { 'Set-Cookie': cookie } }
-  );
+  // Use response.cookies.set() — the reliable way to set cookies in Next.js 14
+  // (NextResponse.json + headers: { Set-Cookie } is unreliable on Vercel)
+  const response = NextResponse.json({ ok: true, shop_name: shop.shop_name });
+  response.cookies.set(SESSION_COOKIE, encodeURIComponent(token), {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+  });
+  return response;
 }
