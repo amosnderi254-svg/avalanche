@@ -111,10 +111,7 @@ export default function ListingsFilterBar() {
   return (
     <>
       {/* ============ STICKY SEARCH + FILTER BAR ============ */}
-      <div className="listings-header" style={{
-        position: 'sticky',
-        top: 64,
-        zIndex: 40,
+      <div className="listings-header lfb-bar" style={{
         background: 'rgba(255,253,249,.98)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -624,7 +621,18 @@ export default function ListingsFilterBar() {
           from { transform: translateY(100%); }
           to   { transform: translateY(0);    }
         }
+        /* Sticky only on desktop — mobile nav already handles navigation */
+        .lfb-bar {
+          position: sticky;
+          top: 64px;
+          z-index: 40;
+        }
         @media (max-width: 639px) {
+          .lfb-bar {
+            position: relative;
+            top: auto;
+            z-index: auto;
+          }
           .filter-desktop { display: none !important; }
           .filter-mobile  { display: flex !important; }
         }
