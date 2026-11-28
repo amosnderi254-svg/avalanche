@@ -160,7 +160,7 @@ export default function TopSellersRow() {
 
         /* ── Card body ───────────────────────────── */
         .tsr-body {
-          padding: 0 16px 18px;
+          padding: 0 18px 20px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -171,8 +171,8 @@ export default function TopSellersRow() {
           display: flex;
           align-items: flex-end;
           gap: 10px;
-          margin-top: -20px;
-          margin-bottom: 10px;
+          margin-top: -22px;
+          margin-bottom: 12px;
         }
         .tsr-avatar {
           width: 44px;
@@ -193,7 +193,10 @@ export default function TopSellersRow() {
           display: flex;
           gap: 16px;
           overflow-x: auto;
-          padding-bottom: 6px;
+          padding-bottom: 10px;
+          /* Allow first/last card to peek on mobile */
+          padding-left: 2px;
+          padding-right: 2px;
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
@@ -215,8 +218,8 @@ export default function TopSellersRow() {
 
         /* ── CTA link ────────────────────────────── */
         .tsr-cta {
-          margin-top: auto;
-          padding-top: 12px;
+          margin-top: 14px;
+          padding-top: 14px;
           border-top: 1px solid #F5EEE6;
           display: flex;
           align-items: center;
@@ -350,7 +353,7 @@ export default function TopSellersRow() {
                       <p style={{
                         font: '800 15px/1.25 Outfit,sans-serif',
                         color: '#1A1A1A',
-                        margin: '0 0 4px',
+                        margin: '0 0 5px',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -363,7 +366,7 @@ export default function TopSellersRow() {
                         <p style={{
                           font: '400 12px Outfit,sans-serif',
                           color: '#999',
-                          margin: '0 0 12px',
+                          margin: '0 0 14px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -379,7 +382,7 @@ export default function TopSellersRow() {
                       )}
 
                       {/* Stats pills */}
-                      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 'auto' }}>
+                      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 0 }}>
                         {seller.total_sold > 0 && (
                           <span style={{
                             font: '700 11px Outfit,sans-serif',
