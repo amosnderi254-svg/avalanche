@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
+import { createAdminClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,16 +76,53 @@ export default async function ShopsPage(
 ) {
   const area = searchParams.area || '';
 
-  const url = `${APP_URL}/api/shops${area ? `?area=${encodeURIComponent(area)}` : ''}`;
+  // ── Direct Supabase query (avoids internal HTTP fetch which fails on Vercel) ──
   let shops: Shop[] = [];
   try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (res.ok) {
-      const json = await res.json();
-      shops = json.shops || [];
+    const supabase = createAdminClient();
+
+    // Build query for shop profiles
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let shopQuery: any = supabase
+      .from('seller_profiles')
+      .select(
+        'id, phone, display_name, profile_slug, neighbourhood, avatar_url, ' +
+        'shop_name, shop_bio, shop_banner_url, shop_areas, verified_shop, ' +
+        'subscription_tier, created_at'
+      )
+      .eq('is_shop', true)
+      .order('verified_shop', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (area) {
+      shopQuery = shopQuery.or(`neighbourhood.ilike.%${area}%,shop_areas.cs.{${area}}`);
+    }
+
+    const { data: shopRows } = await shopQuery;
+    const rawShops = (shopRows ?? []) as Omit<Shop, 'listing_count'>[];
+
+    // Fetch live listing counts for each shop in one query
+    if (rawShops.length > 0) {
+      const phones = rawShops.map(s => s.phone);
+      const now = new Date().toISOString();
+      const { data: listingRows } = await supabase
+        .from('listings')
+        .select('seller_phone')
+        .in('seller_phone', phones)
+        .eq('status', 'live')
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
+
+      const countMap: Record<string, number> = {};
+      for (const row of (listingRows ?? [])) {
+        countMap[row.seller_phone] = (countMap[row.seller_phone] || 0) + 1;
+      }
+
+      shops = rawShops.map(s => ({ ...s, listing_count: countMap[s.phone] || 0 }));
     }
   } catch {
-    // fail silently, show empty state
+    // fail gracefully — show empty state
+    shops = [];
   }
 
   const verifiedShops = shops.filter(s => s.verified_shop);
