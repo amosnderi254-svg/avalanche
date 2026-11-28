@@ -67,6 +67,15 @@ export async function POST(req: NextRequest) {
     .eq('is_shop', true)
     .single();
 
+  // Check PIN is set before attempting verification
+  // (shop_pin is NULL when admin created the shop without a PIN)
+  if (shop && !shop.shop_pin) {
+    return NextResponse.json(
+      { error: 'Dashboard PIN not yet set up. Contact admin for your PIN.' },
+      { status: 403 }
+    );
+  }
+
   // Always run verifyPin to prevent timing-based enumeration
   const hashedPin = shop?.shop_pin ?? 'x:y'; // dummy so verifyPin always runs
   const pinOk     = shop ? verifyPin(pin, hashedPin) : false;
@@ -82,14 +91,6 @@ export async function POST(req: NextRequest) {
     }
     failStore.set(ip, entry);
     return NextResponse.json({ error: 'Incorrect phone or PIN' }, { status: 401 });
-  }
-
-  // Check PIN is set
-  if (!shop.shop_pin) {
-    return NextResponse.json(
-      { error: 'Dashboard access not yet set up. Contact admin to get your PIN.' },
-      { status: 403 }
-    );
   }
 
   // Success -- clear failures

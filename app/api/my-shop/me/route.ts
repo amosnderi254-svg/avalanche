@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     // Try view_count first (post-migration), fall through to views if column missing
     supabase
       .from('listings')
-      .select('id, title, price, images, views, status, category, created_at')
+      .select('id, title, price, images, view_count, status, category, created_at')
       .eq('seller_phone', shop.phone)
       .order('created_at', { ascending: false })
       .limit(20),
@@ -72,12 +72,12 @@ export async function GET(req: NextRequest) {
   // Total views across all listings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allRows = (allListings.data ?? []) as any[];
-  // Support both column names: 'view_count' (after migration) and 'views' (original schema)
-  const totalViews = allRows.reduce((sum, r) => sum + (r.view_count ?? r.views ?? 0), 0);
+  // view_count column (renamed from views by migration; now selected directly)
+  const totalViews = allRows.reduce((sum, r) => sum + (r.view_count ?? 0), 0);
 
-  // Best performer: highest views listing (sort by whichever view column exists)
+  // Best performer: highest view_count listing
   const sortedByViews = [...allRows].sort(
-    (a, b) => (b.view_count ?? b.views ?? 0) - (a.view_count ?? a.views ?? 0)
+    (a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)
   );
   const bestListing = sortedByViews[0] ?? null;
 
