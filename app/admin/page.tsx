@@ -1442,7 +1442,11 @@ export default function AdminPage() {
         });
         const data = await res.json();
         if (res.ok) {
-          const normalizedPhone = onboardForm.phone.replace(/\D/g, '').replace(/^0/, '254');
+          const rawPhoneDigits = onboardForm.phone.replace(/\D/g, '');
+          const normalizedPhone = rawPhoneDigits.startsWith('254') ? rawPhoneDigits
+            : rawPhoneDigits.startsWith('0')   ? '254' + rawPhoneDigits.slice(1)
+            : rawPhoneDigits.length === 9      ? '254' + rawPhoneDigits
+            : rawPhoneDigits;
           setOnboardCredentials({ shop_name: onboardForm.shop_name, phone: normalizedPhone, pin: rawPin, action: data.action, profile_slug: data.shop?.profile_slug || null });
           setOnboardMsg('');
           setOnboardForm(BLANK_ONBOARD); setOnboardStep(1);

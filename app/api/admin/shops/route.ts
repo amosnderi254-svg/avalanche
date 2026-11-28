@@ -133,7 +133,12 @@ export async function POST(req: NextRequest) {
   // Build admin-readable shop_areas from categories until a dedicated column is added
   const shopAreas: string[] = Array.isArray(categories) && categories.length > 0 ? categories : [];
 
-  const normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '254');
+  // Normalize phone — handle all common formats
+  const rawDigits = phone.replace(/\D/g, '');
+  const normalizedPhone = rawDigits.startsWith('254') ? rawDigits
+    : rawDigits.startsWith('0')   ? '254' + rawDigits.slice(1)
+    : rawDigits.length === 9      ? '254' + rawDigits
+    : rawDigits;
   const supabase = createAdminClient();
 
   // Check if seller profile exists
