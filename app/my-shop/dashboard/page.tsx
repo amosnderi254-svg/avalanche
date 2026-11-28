@@ -87,17 +87,30 @@ export default function ShopDashboard() {
   const router = useRouter();
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/my-shop/me')
-      .then(r => r.ok ? r.json() : null)
+      .then(async r => {
+        if (r.ok) return r.json();
+        // Capture the actual error — don't silently redirect
+        const body = await r.json().catch(() => ({ error: r.statusText || 'Unknown error' }));
+        const msg = `HTTP ${r.status}: ${body.error || r.statusText}`;
+        setAuthError(msg);
+        setLoading(false);
+        return null;
+      })
       .then(data => {
-        if (!data?.shop) { router.replace('/my-shop'); return; }
+        if (!data) return;
+        if (!data?.shop) { setAuthError('No shop data returned from /api/my-shop/me'); setLoading(false); return; }
         setShop(data.shop);
         setLoading(false);
       })
-      .catch(() => router.replace('/my-shop'));
-  }, [router]);
+      .catch(err => {
+        setAuthError(`Network error: ${err?.message || String(err)}`);
+        setLoading(false);
+      });
+  }, []);
 
   if (loading) {
     return (
@@ -106,6 +119,27 @@ export default function ShopDashboard() {
           <div style={{ width:28, height:28, border:'2.5px solid #F07828', borderTopColor:'transparent', borderRadius:'50%', animation:'spin .7s linear infinite', margin:'0 auto 12px' }}/>
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           <span style={{ font:'400 14px Outfit,sans-serif', color:'#AAA' }}>Loading dashboard…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show the actual error so we can diagnose (not silently redirect)
+  if (authError) {
+    return (
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#F7F4F0', padding:'24px' }}>
+        <div style={{ textAlign:'center', maxWidth:420 }}>
+          <div style={{ fontSize:40, marginBottom:12 }}>🔐</div>
+          <h2 style={{ font:'700 20px Outfit,sans-serif', color:'#1A1A1A', margin:'0 0 8px' }}>Dashboard access error</h2>
+          <p style={{ font:'400 14px Outfit,sans-serif', color:'#555', margin:'0 0 16px' }}>
+            Something went wrong loading your dashboard. Here&apos;s what the server said:
+          </p>
+          <div style={{ background:'#FEF2F2', border:'1.5px solid #FCA5A5', borderRadius:10, padding:'12px 16px', marginBottom:20, textAlign:'left' }}>
+            <code style={{ font:'500 13px monospace', color:'#DC2626', wordBreak:'break-all' }}>{authError}</code>
+          </div>
+          <a href="/my-shop" style={{ display:'inline-block', background:'#F07828', color:'#fff', textDecoration:'none', borderRadius:10, padding:'10px 24px', font:'700 14px Outfit,sans-serif' }}>
+            ← Back to login
+          </a>
         </div>
       </div>
     );

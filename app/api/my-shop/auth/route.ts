@@ -99,11 +99,12 @@ export async function POST(req: NextRequest) {
   const session = newSession(shop.id, shop.phone);
   const token   = createSessionToken(session);
 
-  // Use response.cookies.set() — the reliable way to set cookies in Next.js 14
-  // (NextResponse.json + headers: { Set-Cookie } is unreliable on Vercel)
+  // Set the session cookie — token is base64url (A-Za-z0-9_-.) which is cookie-safe
+  // Using response.cookies.set() — documented approach for Route Handlers in Next.js 14
   const response = NextResponse.json({ ok: true, shop_name: shop.shop_name });
-  response.cookies.set(SESSION_COOKIE, encodeURIComponent(token), {
+  response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
