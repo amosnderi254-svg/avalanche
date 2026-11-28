@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: shop } = await supabase
     .from('seller_profiles')
-    .select('id, phone, shop_name, shop_pin, is_shop, subscription_tier, subscription_expires_at, verified_shop')
+    .select('id, phone, shop_name, shop_pin, is_shop, subscription_tier, subscription_expires_at, verified_shop, profile_slug')
     .eq('phone', normalized)
     .eq('is_shop', true)
     .single();
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 
   // Set the session cookie — token is base64url (A-Za-z0-9_-.) which is cookie-safe
   // Using response.cookies.set() — documented approach for Route Handlers in Next.js 14
-  const response = NextResponse.json({ ok: true, shop_name: shop.shop_name });
+  const response = NextResponse.json({ ok: true, shop_name: shop.shop_name, profile_slug: shop.profile_slug });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

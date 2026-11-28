@@ -12,12 +12,13 @@ export default function ShopLoginPage() {
   const [checking, setChecking] = useState(true);
   const pinRef = useRef<HTMLInputElement>(null);
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect to the seller's unique dashboard URL
   useEffect(() => {
     fetch('/api/my-shop/me')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.shop) router.replace('/my-shop/dashboard');
+        if (data?.shop?.profile_slug) router.replace(`/shop/${data.shop.profile_slug}`);
+        else if (data?.shop) router.replace('/my-shop/dashboard');
         else setChecking(false);
       })
       .catch(() => setChecking(false));
@@ -39,7 +40,12 @@ export default function ShopLoginPage() {
         setPin('');
         pinRef.current?.focus();
       } else {
-        router.replace('/my-shop/dashboard');
+        // Redirect to the seller's unique dashboard URL
+        if (data.profile_slug) {
+          router.replace(`/shop/${data.profile_slug}`);
+        } else {
+          router.replace('/my-shop/dashboard');
+        }
       }
     } catch {
       setError('Network error. Please try again.');

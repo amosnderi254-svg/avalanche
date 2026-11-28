@@ -7,10 +7,12 @@ interface ShopShellProps {
   children: React.ReactNode;
   shopName?: string;
   profileSlug?: string;
+  dashboardHref?: string;
 }
 
-const NAV = [
+const NAV_BASE = [
   {
+    id: 'dashboard',
     href: '/my-shop/dashboard',
     label: 'Dashboard',
     icon: (
@@ -21,6 +23,7 @@ const NAV = [
     ),
   },
   {
+    id: 'listings',
     href: '/my-shop/listings',
     label: 'Listings',
     icon: (
@@ -32,6 +35,7 @@ const NAV = [
     ),
   },
   {
+    id: 'profile',
     href: '/my-shop/profile',
     label: 'Profile',
     icon: (
@@ -43,15 +47,27 @@ const NAV = [
   },
 ];
 
-export default function ShopShell({ children, shopName, profileSlug }: ShopShellProps) {
+export default function ShopShell({ children, shopName, profileSlug, dashboardHref }: ShopShellProps) {
   const pathname = usePathname();
   const router   = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Build nav — dashboard points to the slug-based URL when available
+  const NAV = NAV_BASE.map(item =>
+    item.id === 'dashboard' && dashboardHref
+      ? { ...item, href: dashboardHref }
+      : item
+  );
+
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/my-shop/logout', { method: 'POST' }).catch(() => {});
-    router.replace('/my-shop');
+    // Redirect to slug-based login if we know it, otherwise generic entry
+    if (dashboardHref) {
+      router.replace(dashboardHref);
+    } else {
+      router.replace('/my-shop');
+    }
   }
 
   return (
