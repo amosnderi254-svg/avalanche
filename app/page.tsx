@@ -5,6 +5,7 @@ import NayaChat from '@/components/NayaChat';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
+import ListingsFilterBar from '@/components/ListingsFilterBar';
 import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
@@ -127,6 +128,11 @@ export default async function Home() {
 
       {/* ── Hero slider ─────────────────────────────────── */}
       <HeroSlider />
+
+      {/* ── Search / Filter bar (sticky) ─────────────────── */}
+      <Suspense fallback={null}>
+        <ListingsFilterBar />
+      </Suspense>
 
       {/* ── Live stat strip (Feature 8 — minimal) ─────────── */}
       <ActivityRail />
