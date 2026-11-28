@@ -9,6 +9,7 @@ import PromoBanner from '@/components/PromoBanner';
 import ActivityRail from '@/components/ActivityRail';
 import AudioPlayer from '@/components/AudioPlayer';
 import RecentlySoldTicker from '@/components/RecentlySoldTicker';
+import TopSellersRow from '@/components/TopSellersRow';
 import SellerEarningsSpotlight from '@/components/SellerEarningsSpotlight';
 import LiveDemandFeed from '@/components/LiveDemandFeed';
 import { createServerClient } from '@/lib/supabase-server';
@@ -132,6 +133,9 @@ export default async function Home() {
 
       {/* ── Recently Sold Ticker ─────────────────────────── */}
       <RecentlySoldTicker />
+
+      {/* ── Top Sellers Row ──────────────────────────────── */}
+      <TopSellersRow />
 
       {/* ── Listings ─────────────────────────────────────── */}
       <div id="listings" style={{ background: 'var(--bg, #FFFDF9)' }}>
